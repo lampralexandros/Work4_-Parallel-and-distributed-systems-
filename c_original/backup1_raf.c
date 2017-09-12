@@ -4,7 +4,7 @@
 #include <time.h>
 #include "sys/time.h"
 
-//test git
+
 #define MAX_NO_OF_LAYERS 3 //3 layers
 #define MAX_NO_OF_INPUTS 2
 #define MAX_NO_OF_NEURONS 1000 //10
@@ -15,7 +15,7 @@ void createNet( int, int *, int *, char *, double *, int );
 void feedNetInputs(double *);
 void updateNetOutput(void);
 double *getOutputs();
-void trainNet ( double, double, int, double * );
+void trainNet (double * );
 void applyBatchCumulations( double, double );
 int loadNet(char *);
 int saveNet(char *);
@@ -214,8 +214,8 @@ static double derivative (struct neuron * myNeuron) {
 
 }
 
-// learningRate and momentumRate will have no effect if batch mode is 'on'
-void trainNet ( double learningRate, double momentumRate, int batch, double *outputTargets ) {
+
+void trainNet (double *outputTargets ) {
 
     int i,j,k;
     double temp;
@@ -246,38 +246,17 @@ void trainNet ( double learningRate, double momentumRate, int batch, double *out
     for(i = theNet.noOfLayers - 1; i >= 0; i--) {
         currLayer = &theNet.layers[i];
         for ( j = 0; j < currLayer->noOfNeurons; j++ ) {
-
             // thresholds
-            if ( batch == 1 ) {
-                    currLayer->neurons[j].batchCumulThresholdChange += *(currLayer->neurons[j].error) * -1;
-            }
-            else {
-                tempWeight = currLayer->neurons[j].threshold;
-                currLayer->neurons[j].threshold += ( learningRate * *(currLayer->neurons[j].error) * -1 ) + ( momentumRate * ( currLayer->neurons[j].threshold - currLayer->neurons[j].oldThreshold ) );
-                currLayer->neurons[j].oldThreshold = tempWeight;
-            }
-
+            currLayer->neurons[j].batchCumulThresholdChange += *(currLayer->neurons[j].error) * -1;
             // weights
-            if ( batch == 1 ) {
-                for( k = 0; k < currLayer->neurons[j].noOfInputs; k++ ) {
-                    currLayer->neurons[j].netBatchCumulWeightChanges[k] +=  *(currLayer->neurons[j].error) * currLayer->neurons[j].inputs[k];
-                }
-            }
-            else {
-                for( k = 0; k < currLayer->neurons[j].noOfInputs; k++ ) {
-                    tempWeight = currLayer->neurons[j].weights[k];
-                    currLayer->neurons[j].weights[k] += ( learningRate * *(currLayer->neurons[j].error) * currLayer->neurons[j].inputs[k] ) + ( momentumRate * ( currLayer->neurons[j].weights[k] - currLayer->neurons[j].oldWeights[k] ) );
-                    currLayer->neurons[j].oldWeights[k] = tempWeight;
-                }
+            for( k = 0; k < currLayer->neurons[j].noOfInputs; k++ ) {
+                currLayer->neurons[j].netBatchCumulWeightChanges[k] +=  *(currLayer->neurons[j].error) * currLayer->neurons[j].inputs[k];
             }
 
         }
     }
 
-    if(batch == 1) {
-        theNet.noOfBatchChanges++;
-    }
-
+    theNet.noOfBatchChanges++;
 }
 
 void applyBatchCumulations( double learningRate, double momentumRate ) {
@@ -374,7 +353,7 @@ int main() {
     double inputs[MAX_NO_OF_INPUTS];
     double outputTargets[MAX_NO_OF_OUTPUTS];
     int N=10000000;
-	printf("Testing Number : %d \n", N);
+	  printf("Testing Number : %d \n", N);
     /* determine layer paramaters */
     int noOfLayers = 3; // input layer excluded
     int noOfNeurons[] = {5,3,2}; //{5,3,2}
@@ -383,6 +362,7 @@ int main() {
     double actFuncFlatnesses[] = {1,1,1};
 
     createNet(noOfLayers, noOfNeurons, noOfInputs, axonFamilies, actFuncFlatnesses, 1);
+
 
     /* train it using batch method */
     int i;
@@ -398,7 +378,7 @@ int main() {
         outputTargets[0] = (double)sin(tempTotal);
         outputTargets[1] = (double)cos(tempTotal);
         /* train using batch training ( don't update weights, just cumulate them ) */
-        trainNet(0, 0, 1, outputTargets);
+        trainNet(outputTargets);
         counter++;
         /* apply batch changes after 1000 loops use .8 learning rate and .8 momentum */
         if(counter == 100) { applyBatchCumulations(.8,.8); counter = 0;}
@@ -411,8 +391,6 @@ int main() {
 
 
     printf("Time to train : %fs\n", timePassed);
-    printf("Hello world");
-
 
 
     /* test it */
