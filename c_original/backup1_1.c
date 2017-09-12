@@ -48,12 +48,8 @@ void createNet( int, int *, int *, char *, double *, int , struct neuralNet);
 void feedNetInputs(double *, struct neuralNet);
 void updateNetOutput(struct neuralNet);
 double *getOutputs(struct neuralNet);
-void trainNet ( double, double, int, double *, struct neuralNet);
+void trainNet (double *, struct neuralNet);
 void applyBatchCumulations( double, double ,struct neuralNet);
-
-
-
-
 
 
 double getRand() {
@@ -221,7 +217,7 @@ static double derivative (struct neuron * myNeuron) {
 }
 
 // learningRate and momentumRate will have no effect if batch mode is 'on'
-void trainNet ( double learningRate, double momentumRate, int batch, double *outputTargets , struct neuralNet theNet ) {
+void trainNet (double *outputTargets , struct neuralNet theNet ) {
 
     int i,j,k;
     double temp;
@@ -254,35 +250,19 @@ void trainNet ( double learningRate, double momentumRate, int batch, double *out
         for ( j = 0; j < currLayer->noOfNeurons; j++ ) {
 
             // thresholds
-            if ( batch == 1 ) {
-                    currLayer->neurons[j].batchCumulThresholdChange += *(currLayer->neurons[j].error) * -1;
-            }
-            else {
-                tempWeight = currLayer->neurons[j].threshold;
-                currLayer->neurons[j].threshold += ( learningRate * *(currLayer->neurons[j].error) * -1 ) + ( momentumRate * ( currLayer->neurons[j].threshold - currLayer->neurons[j].oldThreshold ) );
-                currLayer->neurons[j].oldThreshold = tempWeight;
-            }
+            currLayer->neurons[j].batchCumulThresholdChange += *(currLayer->neurons[j].error) * -1;
+
 
             // weights
-            if ( batch == 1 ) {
-                for( k = 0; k < currLayer->neurons[j].noOfInputs; k++ ) {
-                    currLayer->neurons[j].netBatchCumulWeightChanges[k] +=  *(currLayer->neurons[j].error) * currLayer->neurons[j].inputs[k];
-                }
+            for( k = 0; k < currLayer->neurons[j].noOfInputs; k++ ) {
+                currLayer->neurons[j].netBatchCumulWeightChanges[k] +=  *(currLayer->neurons[j].error) * currLayer->neurons[j].inputs[k];
             }
-            else {
-                for( k = 0; k < currLayer->neurons[j].noOfInputs; k++ ) {
-                    tempWeight = currLayer->neurons[j].weights[k];
-                    currLayer->neurons[j].weights[k] += ( learningRate * *(currLayer->neurons[j].error) * currLayer->neurons[j].inputs[k] ) + ( momentumRate * ( currLayer->neurons[j].weights[k] - currLayer->neurons[j].oldWeights[k] ) );
-                    currLayer->neurons[j].oldWeights[k] = tempWeight;
-                }
-            }
-
         }
     }
 
-    if(batch == 1) {
-        theNet.noOfBatchChanges++;
-    }
+
+    theNet.noOfBatchChanges++;
+
 
 }
 
@@ -338,7 +318,7 @@ int main() {
 	// random number
 	int howManyNet=1;
 	manyNets=(struct neuralNet *)malloc(howManyNet*sizeof(struct neuralNet));
-    	createNet(noOfLayers, noOfNeurons, noOfInputs, axonFamilies, actFuncFlatnesses, 1, manyNets[0]);
+  createNet(noOfLayers, noOfNeurons, noOfInputs, axonFamilies, actFuncFlatnesses, 1, manyNets[0]);
 
     /* train it using batch method */
     int i;
@@ -354,7 +334,7 @@ int main() {
         outputTargets[0] = (double)sin(tempTotal);
         outputTargets[1] = (double)cos(tempTotal);
         /* train using batch training ( don't update weights, just cumulate them ) */
-        trainNet(0, 0, 1, outputTargets,manyNets[0]);
+        trainNet(outputTargets,manyNets[0]);
         counter++;
         /* apply batch changes after 1000 loops use .8 learning rate and .8 momentum */
         if(counter == 100) { applyBatchCumulations(.8,.8,manyNets[0]); counter = 0;}
