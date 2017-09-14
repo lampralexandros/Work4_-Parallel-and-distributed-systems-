@@ -17,6 +17,8 @@
 #ifndef BPNET_H
 #define BPNET_H
 
+#include "stdio.h"
+
 
 
 /*********************************Structure representing a neuron******************************/
@@ -46,6 +48,8 @@ struct layer
 
     void create(int inputsize, int _neuroncount);//Creates the layer and allocates memory
     void calculate();//Calculates all neurons performing the network formula
+    // A method to clone the layer of a neural net
+    void clone_layer(struct layer *main_layer);
 };
 /********************************Structure Representing the network********************************/
 class bpnet
@@ -76,6 +80,10 @@ public:
     {
         return m_outputlayer;
     }
+	//A method to clone a bpnet
+	void clone_bpnet(class bpnet *main_bpnet);
+  //get methods
+  int get_m_hiddenlayercount();
 
 };
 

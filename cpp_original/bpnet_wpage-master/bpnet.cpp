@@ -121,7 +121,11 @@ void layer::calculate()
        // neurons[i]->output=-1 + 2*(1.f + exp(-sum));
     }
 }
-
+// Clones the layer of a neural net
+void layer::clone_layer(struct layer *main_layer){
+  this->inputcount=main_layer->inputcount;
+  this->neuroncount=main_layer->neuroncount;
+}
 
 
 /***************************bpnet object functions**************/
@@ -326,4 +330,21 @@ void bpnet::update(int layerindex)
             }
         }
     }
+}
+
+
+int bpnet::get_m_hiddenlayercount(){
+  return this->m_hiddenlayercount;
+};
+
+
+void bpnet::clone_bpnet(class bpnet *main_bpnet)
+{
+  this->m_hiddenlayercount=main_bpnet->get_m_hiddenlayercount();
+  printf("This is  a 5test %d\n",this->m_inputlayer.inputcount );
+  printf("This is  a 7test %d\n",this->m_inputlayer.neuroncount );
+  this->m_inputlayer.clone_layer(&main_bpnet->m_inputlayer);
+  // tests
+  printf("This is  a 6test %d\n",this->m_inputlayer.inputcount );
+  printf("This is  a 8test %d\n",this->m_inputlayer.neuroncount );
 }
