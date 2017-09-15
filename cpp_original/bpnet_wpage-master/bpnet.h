@@ -33,6 +33,8 @@ struct neuron
     neuron();//Constructor
     ~neuron();//Destructor
     void create(int inputcount);//Allocates memory and initializates values
+    // A method to clone the neuron
+    void clone_neuron(struct neuron *main_neuron);
 };
 /**************************************Structure representing a layer******************************/
 struct layer

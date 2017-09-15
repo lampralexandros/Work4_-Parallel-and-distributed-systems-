@@ -57,11 +57,19 @@ void neuron::create(int inputcount)
     random*=sign;
     sign*=-1;
     wgain=random;
+}
 
-
+//
+void neuron::clone_neuron(struct neuron *main_neuron){
+  this->output=main_neuron->output;
+  this->gain=main_neuron->gain;
+  this->wgain=main_neuron->wgain;
 
 
 }
+
+
+
 
 
 /***********************************Layer member functions********************************/
@@ -123,8 +131,16 @@ void layer::calculate()
 }
 // Clones the layer of a neural net
 void layer::clone_layer(struct layer *main_layer){
+
+
+  printf("Label1\n" );
   this->inputcount=main_layer->inputcount;
+  printf("Label2\n" );
   this->neuroncount=main_layer->neuroncount;
+  printf("Label3\n" );
+
+
+
 }
 
 
@@ -340,6 +356,7 @@ int bpnet::get_m_hiddenlayercount(){
 
 void bpnet::clone_bpnet(class bpnet *main_bpnet)
 {
+  int i;
   this->m_hiddenlayercount=main_bpnet->get_m_hiddenlayercount();
   printf("This is  a 5test %d\n",this->m_inputlayer.inputcount );
   printf("This is  a 7test %d\n",this->m_inputlayer.neuroncount );
@@ -347,4 +364,12 @@ void bpnet::clone_bpnet(class bpnet *main_bpnet)
   // tests
   printf("This is  a 6test %d\n",this->m_inputlayer.inputcount );
   printf("This is  a 8test %d\n",this->m_inputlayer.neuroncount );
+  this->m_hiddenlayers=new layer*[this->m_hiddenlayercount];
+
+  for(i=0;i<this->m_hiddenlayercount;i++){
+    this->m_hiddenlayers[i]=new layer;
+    this->m_hiddenlayers[i]->clone_layer(main_bpnet->m_hiddenlayers[i]);
+  }
+
+
 }
