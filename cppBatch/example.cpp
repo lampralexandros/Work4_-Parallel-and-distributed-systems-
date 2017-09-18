@@ -22,7 +22,7 @@ using namespace std;
 #define PATTERN_SIZE 2
 #define NETWORK_INPUTNEURONS 3
 #define NETWORK_OUTPUT 1
-#define HIDDEN_LAYERS 2
+#define HIDDEN_LAYERS 0
 #define EPOCHS 1000000
 
 
@@ -71,6 +71,7 @@ int main()
     //Start the neural network training
     start = clock();
     cout << "Start training for " << EPOCHS << " " << endl;
+    int counter=0;
 
     for(i=0;i<EPOCHS;i++)
     {
@@ -79,11 +80,17 @@ int main()
         {
 
             error+=net.train(desiredout[j],pattern[j],0.2f,0.1f,1);
-            net.applyBatchCumulations(desiredout[j],pattern[j],0.2f,0.1f);
+            counter++;
+            if(counter==10){
+              net.applyBatchCumulations(0.2f,0.1f);
+              counter=0;
+            }
+
 
 
 
         }
+
 
         error/=PATTERN_COUNT;
         //display error

@@ -38,11 +38,12 @@ neuron::~neuron()
 void neuron::create(int inputcount)
 {
     assert(inputcount);
-    float sign=-1;//to change sign
+    float sign=1;//to change sign
     float random;//to get random number
     weights=new float[inputcount];
     deltavalues=new float[inputcount];
-    error=0;
+    errorGain=0;
+    errorWeight=0;
 
     //important initializate all weights as random unsigned values
     //and delta values as 0
@@ -50,16 +51,16 @@ void neuron::create(int inputcount)
     {
         //get a random number between -0.5 and 0.5
         random=(float(rand()) / float(RAND_MAX))/2.f; //min 0.5
-        random*=sign;
-        sign*=-1;
+        // random*=sign;
+        // sign*=-1;
         weights[i]=random;
         deltavalues[i]=0;
     }
-    gain=1;
+    gain=-1;
 
     random=(float(rand()) / float(RAND_MAX))/2.f; //min 0.5
-    random*=sign;
-    sign*=-1;
+    // random*=sign;
+    // sign*=-1;
     wgain=random;
 
 
@@ -305,7 +306,8 @@ float bpnet::train(const float *desiredoutput, const float *input, float alpha, 
           //calculate the error value for the output layer
           output=m_outputlayer.neurons[i]->output; //copy this value to facilitate calculations
           //from the algorithm we can take the error value as
-          m_outputlayer.neurons[i]->error=(desiredoutput[i] - output) * output * (1 - output);
+          errorc=(desiredoutput[i] - output) * output * (1 - output);
+          m_outputlayer.neurons[i]->errorGain+=errorc;
 
           //and the general error as the sum of delta values. Where delta is the squared difference
           //of the desired value with the output value
@@ -315,7 +317,8 @@ float bpnet::train(const float *desiredoutput, const float *input, float alpha, 
           //now we proceed to update the weights of the neuron
           for(j=0;j<m_outputlayer.inputcount;j++)
           {
-              sum+=m_outputlayer.neurons[i]->weights[j] * m_outputlayer.neurons[i]->error;
+              m_outputlayer.neurons[i]->errorWeight+=errorc*m_outputlayer.layerinput[j];
+              sum+=m_outputlayer.neurons[i]->weights[j] * errorc;
           }
 
 
@@ -328,12 +331,14 @@ float bpnet::train(const float *desiredoutput, const float *input, float alpha, 
           {
               output=m_hiddenlayers[i]->neurons[j]->output;
               //calculate the error for this layer
-              m_hiddenlayers[i]->neurons[j]->error= output * (1-output) * sum;
+              errorc=output * (1-output) * sum;
+              m_hiddenlayers[i]->neurons[j]->errorGain+= errorc;
               //update neuron weights
               for(k=0;k<m_hiddenlayers[i]->inputcount;k++)
               {
+                  m_hiddenlayers[i]->neurons[j]->errorWeight+=errorc*m_hiddenlayers[i]->layerinput[k];
 
-                  csum+=m_hiddenlayers[i]->neurons[j]->weights[k] * m_hiddenlayers[i]->neurons[j]->error;//needed for next layer
+                  csum+=m_hiddenlayers[i]->neurons[j]->weights[k] * errorc;//needed for next layer
 
               }
 
@@ -346,7 +351,11 @@ float bpnet::train(const float *desiredoutput, const float *input, float alpha, 
       for(i=0;i<m_inputlayer.neuroncount;i++)
       {
           output=m_inputlayer.neurons[i]->output;
-          m_inputlayer.neurons[i]->error=output * (1 - output) * sum;
+          errorc=output * (1 - output) * sum;
+          m_inputlayer.neurons[i]->errorGain+=errorc;
+          for (j=0;j<m_inputlayer.inputcount;j++){
+            m_inputlayer.neurons[i]->errorWeight+=errorc*m_inputlayer.layerinput[j];
+          }
 
       }
 
@@ -363,7 +372,7 @@ float bpnet::train(const float *desiredoutput, const float *input, float alpha, 
 }
 
 
-void bpnet::applyBatchCumulations(const float *desiredoutput, const float *input, float alpha, float momentum)
+void bpnet::applyBatchCumulations(float alpha, float momentum)
 {
     int i,j,k;
     float delta=0,udelta=0;
@@ -380,7 +389,7 @@ void bpnet::applyBatchCumulations(const float *desiredoutput, const float *input
             //get the current delta value
             delta=m_outputlayer.neurons[i]->deltavalues[j];
             //update the delta value
-            udelta=alpha *(m_outputlayer.neurons[i]->error / (float)numberOfBatches) * m_outputlayer.layerinput[j] + delta * momentum;
+            udelta=alpha *(m_outputlayer.neurons[i]->errorWeight / (float)numberOfBatches) + delta * momentum;
             //update the weight values
             m_outputlayer.neurons[i]->weights[j]+=udelta;
             m_outputlayer.neurons[i]->deltavalues[j]=udelta;
@@ -389,7 +398,9 @@ void bpnet::applyBatchCumulations(const float *desiredoutput, const float *input
         }
 
         //calculate the weight gain
-        m_outputlayer.neurons[i]->wgain+= alpha * (m_outputlayer.neurons[i]->error / (float)numberOfBatches) * m_outputlayer.neurons[i]->gain;
+        m_outputlayer.neurons[i]->wgain+= alpha * (m_outputlayer.neurons[i]->errorGain / (float)numberOfBatches) * m_outputlayer.neurons[i]->gain;
+        m_outputlayer.neurons[i]->errorGain=0;
+        m_outputlayer.neurons[i]->errorWeight=0;
 
     }
 
@@ -402,15 +413,16 @@ void bpnet::applyBatchCumulations(const float *desiredoutput, const float *input
             for(k=0;k<m_hiddenlayers[i]->inputcount;k++)
             {
                 delta=m_hiddenlayers[i]->neurons[j]->deltavalues[k];
-                udelta= alpha * (m_hiddenlayers[i]->neurons[j]->error / (float)numberOfBatches) * m_hiddenlayers[i]->layerinput[k] + delta * momentum;
+                udelta= alpha * (m_hiddenlayers[i]->neurons[j]->errorWeight / (float)numberOfBatches)  + delta * momentum;
                 m_hiddenlayers[i]->neurons[j]->weights[k]+=udelta;
                 m_hiddenlayers[i]->neurons[j]->deltavalues[k]=udelta;
 
 
             }
 
-            m_hiddenlayers[i]->neurons[j]->wgain+=alpha * (m_hiddenlayers[i]->neurons[j]->error / (float)numberOfBatches) * m_hiddenlayers[i]->neurons[j]->gain;
-
+            m_hiddenlayers[i]->neurons[j]->wgain+=alpha * (m_hiddenlayers[i]->neurons[j]->errorGain / (float)numberOfBatches) * m_hiddenlayers[i]->neurons[j]->gain;
+            m_hiddenlayers[i]->neurons[j]->errorGain=0;
+            m_hiddenlayers[i]->neurons[j]->errorWeight=0;
         }
 
     }
@@ -424,13 +436,15 @@ void bpnet::applyBatchCumulations(const float *desiredoutput, const float *input
         for(j=0;j<m_inputlayer.inputcount;j++)
         {
             delta=m_inputlayer.neurons[i]->deltavalues[j];
-            udelta=alpha * (m_inputlayer.neurons[i]->error / (float)numberOfBatches) * m_inputlayer.layerinput[j] + delta * momentum;
+            udelta=alpha * (m_inputlayer.neurons[i]->errorWeight / (float)numberOfBatches)  + delta * momentum;
             //update weights
             m_inputlayer.neurons[i]->weights[j]+=udelta;
             m_inputlayer.neurons[i]->deltavalues[j]=udelta;
         }
         //and update the gain weight
-        m_inputlayer.neurons[i]->wgain+=alpha * (m_inputlayer.neurons[i]->error / (float)numberOfBatches) * m_inputlayer.neurons[i]->gain;
+        m_inputlayer.neurons[i]->wgain+=alpha * (m_inputlayer.neurons[i]->errorGain / (float)numberOfBatches) * m_inputlayer.neurons[i]->gain;
+        m_inputlayer.neurons[i]->errorGain=0;
+        m_inputlayer.neurons[i]->errorWeight=0;
     }
 
 

@@ -27,7 +27,8 @@ struct neuron
     float output; //output value
     float gain;//Gain value
     float wgain;//Weight gain value
-    float error;
+    float errorGain;
+    float errorWeight;
 
     neuron();//Constructor
     ~neuron();//Destructor
@@ -70,7 +71,7 @@ public:
     //Algorithm
     float train(const float *desiredoutput,const float *input,float alpha, float momentum, int batch);
 
-    void applyBatchCumulations(const float *desiredoutput, const float *input, float alpha, float momentum);
+    void applyBatchCumulations(float alpha, float momentum);
 
     //Updates the next layer input values
     void update(int layerindex);
