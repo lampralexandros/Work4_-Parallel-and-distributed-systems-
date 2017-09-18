@@ -58,11 +58,23 @@ int main()
     };
 
 
-    bpnet net;//Our neural network object
-    int i,j;
+    bpnet net,net1;//Our neural network object
+    // adding a int to by pass the error of HIDDEN_LAYERS
+    int i,j,hidden_layers_var;
     float error;
+    hidden_layers_var=HIDDEN_LAYERS;
     //We create the network
-    net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,HIDDEN_LAYERS,HIDDEN_LAYERS);
+    net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,&hidden_layers_var,HIDDEN_LAYERS);
+
+    //tests
+    printf("This is  a test %d\n",net.get_m_hiddenlayercount() );
+      hidden_layers_var=2;
+    net1.create(3,4,NETWORK_OUTPUT,&hidden_layers_var,2);
+    printf("This is  a 2test %d\n",net1.get_m_hiddenlayercount() );
+    net1.clone_bpnet(&net);
+    printf("This is  a 3test %d\n",net1.get_m_hiddenlayercount() );
+
+    printf("This is  a 4test %d\n",net.get_m_hiddenlayercount() );
 
     //Start the neural network training
     start = clock();
