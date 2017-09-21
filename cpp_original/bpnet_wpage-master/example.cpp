@@ -71,7 +71,7 @@ int main()
       hidden_layers_var=2;
     net1.create(3,4,NETWORK_OUTPUT,&hidden_layers_var,2);
     printf("This is  a 2test %d\n",net1.get_m_hiddenlayercount() );
-    net1.clone_bpnet(&net);
+    net1.clone_bpnet(&net,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,&hidden_layers_var);
     printf("This is  a 3test %d\n",net1.get_m_hiddenlayercount() );
 
     printf("This is  a 4test %d\n",net.get_m_hiddenlayercount() );

@@ -34,7 +34,7 @@ struct neuron
     ~neuron();//Destructor
     void create(int inputcount);//Allocates memory and initializates values
     // A method to clone the neuron
-    void clone_neuron(struct neuron *main_neuron);
+    void clone_neuron(int inputsize, struct neuron *main_neuron);
 };
 /**************************************Structure representing a layer******************************/
 struct layer
@@ -83,7 +83,7 @@ public:
         return m_outputlayer;
     }
 	//A method to clone a bpnet
-	void clone_bpnet(class bpnet *main_bpnet);
+	void clone_bpnet(class bpnet *main_bpnet,int inputneurons,int outputcount,int *hiddenlayers);
   //get methods
   int get_m_hiddenlayercount();
 

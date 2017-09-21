@@ -60,11 +60,17 @@ void neuron::create(int inputcount)
 }
 
 //
-void neuron::clone_neuron(struct neuron *main_neuron){
+void neuron::clone_neuron(int inputsize, struct neuron *main_neuron){
+
   this->output=main_neuron->output;
   this->gain=main_neuron->gain;
   this->wgain=main_neuron->wgain;
-
+  this->weights=new float[inputsize];
+  this->deltavalues=new float[inputsize];
+  for(int i=0;i<inputsize;i++){
+    this->weights[i]=main_neuron->weights[i];
+    this->deltavalues[i]=main_neuron->deltavalues[i];
+  }
 
 }
 
@@ -138,7 +144,12 @@ void layer::clone_layer(struct layer *main_layer){
   printf("Label2\n" );
   this->neuroncount=main_layer->neuroncount;
   printf("Label3\n" );
-
+  this->layerinput=new float[this->inputcount];
+  this->neurons=new neuron*[this->neuroncount];
+  for(int i=0;i<this->neuroncount;i++){
+  this->neurons[i]=new neuron;
+  this->neurons[i]->clone_neuron(this->inputcount, main_layer->neurons[i]);
+  }
 
 
 }
@@ -354,7 +365,7 @@ int bpnet::get_m_hiddenlayercount(){
 };
 
 
-void bpnet::clone_bpnet(class bpnet *main_bpnet)
+void bpnet::clone_bpnet(class bpnet *main_bpnet,int inputneurons,int outputcount,int *hiddenlayers)
 {
   int i;
   this->m_hiddenlayercount=main_bpnet->get_m_hiddenlayercount();
@@ -368,8 +379,9 @@ void bpnet::clone_bpnet(class bpnet *main_bpnet)
 
   for(i=0;i<this->m_hiddenlayercount;i++){
     this->m_hiddenlayers[i]=new layer;
-    this->m_hiddenlayers[i]->clone_layer(main_bpnet->m_hiddenlayers[i]);
+        this->m_hiddenlayers[i]->clone_layer(main_bpnet->m_hiddenlayers[i]);
   }
 
+  this->m_outputlayer.clone_layer(&main_bpnet->m_outputlayer);
 
 }
