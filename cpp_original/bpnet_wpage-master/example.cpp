@@ -20,9 +20,9 @@
 using namespace std;
 #define PATTERN_COUNT 4
 #define PATTERN_SIZE 2
-#define NETWORK_INPUTNEURONS 3
+#define NETWORK_INPUTNEURONS 2
 #define NETWORK_OUTPUT 1
-#define HIDDEN_LAYERS 1
+#define HIDDEN_LAYERS 2
 #define EPOCHS 1000000
 
 
@@ -60,18 +60,21 @@ int main()
 
     bpnet net,net1;//Our neural network object
     // adding a int to by pass the error of HIDDEN_LAYERS
-    int i,j,hidden_layers_var;
+    int i,j,*hidden_layers_var;
     float error;
-    hidden_layers_var=HIDDEN_LAYERS;
+    //hidden_layers_var=HIDDEN_LAYERS;
     //We create the network
-    net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,&hidden_layers_var,HIDDEN_LAYERS);
+    hidden_layers_var=new int[HIDDEN_LAYERS];
+    hidden_layers_var[0]=2;
+    hidden_layers_var[1]=2;
+    net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hidden_layers_var,HIDDEN_LAYERS);
 
     //tests
     printf("This is  a test %d\n",net.get_m_hiddenlayercount() );
-      hidden_layers_var=2;
-    net1.create(3,4,NETWORK_OUTPUT,&hidden_layers_var,2);
+
+    net1.create(3,4,NETWORK_OUTPUT,hidden_layers_var,2);
     printf("This is  a 2test %d\n",net1.get_m_hiddenlayercount() );
-    net1.clone_bpnet(&net,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,&hidden_layers_var);
+    net1.clone_bpnet(&net);
     printf("This is  a 3test %d\n",net1.get_m_hiddenlayercount() );
 
     printf("This is  a 4test %d\n",net.get_m_hiddenlayercount() );
@@ -84,7 +87,7 @@ int main()
         error=0;
         for(j=0;j<PATTERN_COUNT;j++)
         {
-            error+=net.train(desiredout[j],pattern[j],0.2f,0.1f);
+            error+=net1.train(desiredout[j],pattern[j],0.2f,0.1f);
         }
         error/=PATTERN_COUNT;
         //display error
@@ -98,10 +101,10 @@ int main()
     for(i=0;i<PATTERN_COUNT;i++)
     {
 
-        net.propagate(pattern[i]);
+        net1.propagate(pattern[i]);
 
     //display result
-        cout << "TESTED PATTERN " << i << " DESIRED OUTPUT: " << *desiredout[i] << " NET RESULT: "<< net.getOutput().neurons[0]->output << endl;
+        cout << "TESTED PATTERN " << i << " DESIRED OUTPUT: " << *desiredout[i] << " NET RESULT: "<< net1.getOutput().neurons[0]->output << endl;
     }
 
     return 0;

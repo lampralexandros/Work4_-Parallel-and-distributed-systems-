@@ -365,7 +365,7 @@ int bpnet::get_m_hiddenlayercount(){
 };
 
 
-void bpnet::clone_bpnet(class bpnet *main_bpnet,int inputneurons,int outputcount,int *hiddenlayers)
+void bpnet::clone_bpnet(class bpnet *main_bpnet)
 {
   int i;
   this->m_hiddenlayercount=main_bpnet->get_m_hiddenlayercount();

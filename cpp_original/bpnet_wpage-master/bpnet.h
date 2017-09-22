@@ -83,7 +83,7 @@ public:
         return m_outputlayer;
     }
 	//A method to clone a bpnet
-	void clone_bpnet(class bpnet *main_bpnet,int inputneurons,int outputcount,int *hiddenlayers);
+	void clone_bpnet(class bpnet *main_bpnet);
   //get methods
   int get_m_hiddenlayercount();
 
