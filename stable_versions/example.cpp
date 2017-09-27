@@ -145,14 +145,14 @@ int main(int argc, char *argv[])
     desiredout[2][0]=1;
     desiredout[3][0]=0;
 
-    bpnet net;//Our neural network object
+    bpnet *netMatrix=new bpnet[2];//Our neural network object
     int i,j;
     float error;
     //We create the network
 
 
 
-    net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
+    netMatrix[0].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
     //net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,HIDDEN_LAYERS,HIDDEN_LAYERS);
 
     //Start the neural network training
@@ -166,22 +166,19 @@ int main(int argc, char *argv[])
         for(j=0;j<PATTERN_COUNT;j++)
         {
 
-            error+=net.train(desiredout[j],pattern[j],0.2f,0.1f,1);
+            netMatrix[0].batchTrain(desiredout[j],pattern[j]);
+            //train from 2ond net
             counter++;
             if(counter==10){
-              net.applyBatchCumulations(0.2f,0.1f);
+              //function to add errors
+              netMatrix[0].gatherErrors(netMatrix,2);
+              netMatrix[0].applyBatchCumulations(0.2f,0.1f);
               counter=0;
             }
-
-
-
 
         }
 
 
-        error/=PATTERN_COUNT;
-        //display error
-        //cout << "ERROR:" << error << "\r";
 
     }
     duration = ( clock() - start ) / (double) CLOCKS_PER_SEC;
@@ -191,10 +188,10 @@ int main(int argc, char *argv[])
     for(i=0;i<PATTERN_COUNT;i++)
     {
 
-        net.propagate(pattern[i]);
+        netMatrix[0].propagate(pattern[i]);
 
     //display result
-        cout << "TESTED PATTERN " << i << " DESIRED OUTPUT: " << *desiredout[i] << " NET RESULT: "<< net.getOutput().neurons[0]->output << endl;
+        cout << "TESTED PATTERN " << i << " DESIRED OUTPUT: " << *desiredout[i] << " NET RESULT: "<< netMatrix[0].getOutput().neurons[0]->output << endl;
     }
 
     return 0;

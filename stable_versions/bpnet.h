@@ -52,6 +52,7 @@ struct layer
     void calculate();//Calculates all neurons performing the network formula
     // A method to clone the layer of a neural net
     void clone_layer(struct layer *main_layer);
+    void getLayer(struct layer *main_layer);
 };
 /********************************Structure Representing the network********************************/
 class bpnet
@@ -73,8 +74,10 @@ public:
     void propagate(const float *input);//Calculates the network values given an input pattern
     //Updates the weight values of the network given a desired output and applying the backpropagation
     //Algorithm
-    float train(const float *desiredoutput,const float *input,float alpha, float momentum, int batch);
+    float train(const float *desiredoutput,const float *input,float alpha, float momentum);
+    void batchTrain(const float *desiredoutput,const float *input);
 
+    void gatherErrors(class bpnet *netMatrix,int netCount);
     void applyBatchCumulations(float alpha, float momentum);
 
     //Updates the next layer input values

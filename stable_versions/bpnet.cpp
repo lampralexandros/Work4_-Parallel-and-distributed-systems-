@@ -165,7 +165,13 @@ void layer::clone_layer(struct layer *main_layer){
   }
 }
 
-
+// Get the error gain
+void layer::getLayer(struct layer *main_layer){
+  for(int i=0;i<this->neuroncount;i++){
+    this->neurons[i]->errorGain+=main_layer->neurons[i]->errorGain;
+    this->neurons[i]->errorWeight+=main_layer->neurons[i]->errorWeight;
+  }
+}
 
 
 /***************************bpnet object functions**************/
@@ -242,7 +248,7 @@ void bpnet::propagate(const float *input)
     m_outputlayer.calculate();
 }
 //Main training function. Run this function in a loop as many times needed per pattern
-float bpnet::train(const float *desiredoutput, const float *input, float alpha, float momentum,int batch)
+float bpnet::train(const float *desiredoutput, const float *input, float alpha, float momentum)
 {
     //function train, teaches the network to recognize a pattern given a desired output
     float errorg=0; //general quadratic error
@@ -256,7 +262,7 @@ float bpnet::train(const float *desiredoutput, const float *input, float alpha, 
     //the backpropagation algorithm starts from the output layer propagating the error  from the output
     //layer to the input layer
 
-    if(batch==0){
+
       for(i=0;i<m_outputlayer.neuroncount;i++)
       {
           //calculate the error value for the output layer
@@ -329,9 +335,31 @@ float bpnet::train(const float *desiredoutput, const float *input, float alpha, 
           m_inputlayer.neurons[i]->wgain+=alpha * errorc * m_inputlayer.neurons[i]->gain;
       }
 
-    }
 
-    if(batch==1){
+
+
+    //return the general error divided by 2
+    return errorg / 2;
+
+
+}
+
+
+
+void bpnet::batchTrain(const float *desiredoutput, const float *input)
+{
+    //function train, teaches the network to recognize a pattern given a desired output
+    float errorc; //local error;
+    float sum=0,csum=0;
+    float delta,udelta;
+    float output;
+    //first we begin by propagating the input
+    propagate(input);
+    int i,j,k;
+    //the backpropagation algorithm starts from the output layer propagating the error  from the output
+    //layer to the input layer
+
+
 
 
       for(i=0;i<m_outputlayer.neuroncount;i++)
@@ -345,7 +373,7 @@ float bpnet::train(const float *desiredoutput, const float *input, float alpha, 
           //and the general error as the sum of delta values. Where delta is the squared difference
           //of the desired value with the output value
           //quadratic error
-          errorg+=(desiredoutput[i] - output) * (desiredoutput[i] - output) ;
+
 
           //now we proceed to update the weights of the neuron
           for(j=0;j<m_outputlayer.inputcount;j++)
@@ -395,13 +423,31 @@ float bpnet::train(const float *desiredoutput, const float *input, float alpha, 
       numberOfBatches++; //keep track of how many batches passed
 
 
-    }
 
-    //return the general error divided by 2
-    return errorg / 2;
+}
+
+void bpnet::gatherErrors(class bpnet *netMatrix,int netCount)
+{
+  int i,j,k;
+
+  //calculate the error value for the output layer
+  for(i=0;i<netCount;i++){
+      this->m_outputlayer.getLayer(&netMatrix[i].m_outputlayer);
+      for(j=0;j<m_hiddenlayercount;j++){
+        this->m_hiddenlayers[j]->getLayer(netMatrix[i].m_hiddenlayers[j]);
+      }
+      this->m_inputlayer.getLayer(&netMatrix[i].m_inputlayer);
+      this->numberOfBatches+=netMatrix[i].get_numberOfBatches(); //keep track of how many batches passed
+
+  }
 
 
 }
+
+
+
+
+
 
 
 void bpnet::applyBatchCumulations(float alpha, float momentum)

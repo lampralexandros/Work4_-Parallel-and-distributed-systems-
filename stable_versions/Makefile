@@ -1,4 +1,4 @@
-GCC=g++ -w 
+GCC=g++ -w -std=gnu99
 VERSION=0.04
 
 all:
