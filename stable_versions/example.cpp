@@ -28,16 +28,16 @@ using namespace std;
 int main(int argc, char *argv[])
 {
   int NETWORK_INPUTNEURONS,NETWORK_OUTPUT,HIDDEN_LAYERS,EPOCHS,NUM_THREADS;
-  int *HI_C;
+  int *hiddenlayerNeuronCount;
 
   if (argc < 6) { // Check if the command line arguments are correct
 
     NETWORK_INPUTNEURONS=3;
     NETWORK_OUTPUT=1;
     HIDDEN_LAYERS=2;
-    HI_C=(int *)malloc(HIDDEN_LAYERS*sizeof(int));
-    HI_C[0]=3;
-    HI_C[1]=3;
+    hiddenlayerNeuronCount=(int *)malloc(HIDDEN_LAYERS*sizeof(int));
+    hiddenlayerNeuronCount[0]=3;
+    hiddenlayerNeuronCount[1]=3;
     EPOCHS=1000000;
     NUM_THREADS=4;
     printf("Usage: %s NI NO HI EPOCHS THREADS\n\n", argv[0]);
@@ -46,10 +46,10 @@ int main(int argc, char *argv[])
 	   "  NI     : number of inputs= %d\n"
      "  NO     : number of outputs= %d\n"
 	   "  HI     : numer of hiddenlayers= %d\n"
-     "  HI_C   : number of hidenlayer neurons= %d\n"
+     "  hiddenlayerNeuronCount   : number of hidenlayer neurons= %d\n"
      "  EPOCHS : number of EPOCHS= %d\n"
      "  NUM_THREADS : number of THREADS= %d\n\n"
-     ,NETWORK_INPUTNEURONS, NETWORK_OUTPUT,HIDDEN_LAYERS,HI_C[0],EPOCHS,NUM_THREADS);
+     ,NETWORK_INPUTNEURONS, NETWORK_OUTPUT,HIDDEN_LAYERS,hiddenlayerNeuronCount[0],EPOCHS,NUM_THREADS);
 
 
 
@@ -63,24 +63,25 @@ int main(int argc, char *argv[])
     EPOCHS = atoi(argv[4]);     // Display output
     NUM_THREADS=atoi(argv[5]); //number of threads to use
 
-    HI_C=(int *)malloc(HIDDEN_LAYERS*sizeof(int));
+    hiddenlayerNeuronCount=(int *)malloc(HIDDEN_LAYERS*sizeof(int));
     printf("Do you want all hiddenlayers to have same numer of neurons?YES 1, NO 0\n");
     int choice;
-    int number_of_neurons;
+
     cin>>choice;
     if(choice==0){
       for(int i=0;i<HIDDEN_LAYERS;i++){
         printf("Enter number of neurons for %d hidden layer\n",(i+1));
-        cin>>number_of_neurons;
-        HI_C[i]=number_of_neurons;
-        printf("hidden layer neuron count = \n",HI_C[i]);
+        int number_of_neurons;
+        number_of_neurons=getchar();
+        hiddenlayerNeuronCount[i]=number_of_neurons;
+        printf("hidden layer neuron count = \n",hiddenlayerNeuronCount[i]);
       }
     }else{
         printf("Enter number of neurons every hidden layer will have\n");
-
-        cin>>number_of_neurons;
+        int number_of_neurons;
+        number_of_neurons=getchar();
         for(int i=0;i<HIDDEN_LAYERS;i++){
-          HI_C[i]=number_of_neurons;
+          hiddenlayerNeuronCount[i]=number_of_neurons;
         }
 
 
@@ -139,11 +140,6 @@ int main(int argc, char *argv[])
     float error;
     //We create the network
 
-    int *hiddenlayerNeuronCount=new int[HIDDEN_LAYERS]; //array, each element represents how many neurons each hidden layer has
-
-    for(int i=0;i<HIDDEN_LAYERS;i++){
-      hiddenlayerNeuronCount[i]=HI_C[i];
-    }
 
 
     net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
