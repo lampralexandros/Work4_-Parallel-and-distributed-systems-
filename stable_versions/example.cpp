@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
 
 
   }else if (argc==6){
-    if(atoi(argv[1])!=3)
+
     NETWORK_INPUTNEURONS = atoi(argv[1]);        // Rows
     NETWORK_OUTPUT = atoi(argv[2]);       //Columns
     HIDDEN_LAYERS = atoi(argv[3]); // Propability of life cell
@@ -65,21 +65,20 @@ int main(int argc, char *argv[])
 
     hiddenlayerNeuronCount=(int *)malloc(HIDDEN_LAYERS*sizeof(int));
     printf("Do you want all hiddenlayers to have same numer of neurons?YES 1, NO 0\n");
-    int choice;
+    int choice=0;
 
     cin>>choice;
+
     if(choice==0){
       for(int i=0;i<HIDDEN_LAYERS;i++){
         printf("Enter number of neurons for %d hidden layer\n",(i+1));
-        int number_of_neurons;
-        number_of_neurons=getchar();
-        hiddenlayerNeuronCount[i]=number_of_neurons;
-        printf("hidden layer neuron count = \n",hiddenlayerNeuronCount[i]);
+        int number_of_neurons=0;
+        cin >> hiddenlayerNeuronCount[i];
       }
     }else{
         printf("Enter number of neurons every hidden layer will have\n");
-        int number_of_neurons;
-        number_of_neurons=getchar();
+        int number_of_neurons=0   ;
+        cin >> number_of_neurons;
         for(int i=0;i<HIDDEN_LAYERS;i++){
           hiddenlayerNeuronCount[i]=number_of_neurons;
         }
