@@ -40,7 +40,7 @@ neuron::~neuron()
 void neuron::create(int inputcount)
 {
     assert(inputcount);
-    float sign=1;//to change sign
+    float sign=-1;//to change sign
     float random;//to get random number
     weights=new float[inputcount];
     deltavalues=new float[inputcount];
@@ -53,16 +53,16 @@ void neuron::create(int inputcount)
     {
         //get a random number between -0.5 and 0.5
         random=(float(rand()) / float(RAND_MAX))/2.f; //min 0.5
-        // random*=sign;
-        // sign*=-1;
+        random*=sign;
+        sign*=-1;
         weights[i]=random;
         deltavalues[i]=0;
     }
     gain=-1;
 
     random=(float(rand()) / float(RAND_MAX))/2.f; //min 0.5
-    // random*=sign;
-    // sign*=-1;
+    random*=sign;
+    sign*=-1;
     wgain=random;
 
 
