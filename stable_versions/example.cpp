@@ -153,6 +153,9 @@ int main(int argc, char *argv[])
 
 
     netMatrix[0].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
+    netMatrix[1].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
+    netMatrix[1].clone_bpnet(&netMatrix[0]);
+
     //net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,HIDDEN_LAYERS,HIDDEN_LAYERS);
 
     //Start the neural network training
@@ -167,12 +170,14 @@ int main(int argc, char *argv[])
         {
 
             netMatrix[0].batchTrain(desiredout[j],pattern[j]);
+            netMatrix[1].batchTrain(desiredout[j],pattern[j]);
             //train from 2ond net
             counter++;
-            if(counter==10){
+            if(counter==10/2){
               //function to add errors
               netMatrix[0].gatherErrors(netMatrix,2);
               netMatrix[0].applyBatchCumulations(0.2f,0.1f);
+              netMatrix[1].clone_bpnet(&netMatrix[0]);
               counter=0;
             }
 

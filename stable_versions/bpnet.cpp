@@ -432,11 +432,15 @@ void bpnet::gatherErrors(class bpnet *netMatrix,int netCount)
 
   //calculate the error value for the output layer
   for(i=0;i<netCount;i++){
+
       this->m_outputlayer.getLayer(&netMatrix[i].m_outputlayer);
       for(j=0;j<m_hiddenlayercount;j++){
         this->m_hiddenlayers[j]->getLayer(netMatrix[i].m_hiddenlayers[j]);
+
       }
+    
       this->m_inputlayer.getLayer(&netMatrix[i].m_inputlayer);
+
       this->numberOfBatches+=netMatrix[i].get_numberOfBatches(); //keep track of how many batches passed
 
   }
