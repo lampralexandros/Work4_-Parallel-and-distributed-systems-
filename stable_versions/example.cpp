@@ -56,7 +56,6 @@ int main(int argc, char *argv[])
 
 
   }else if (argc==6){
-
     NETWORK_INPUTNEURONS = atoi(argv[1]);        // Rows
     NETWORK_OUTPUT = atoi(argv[2]);       //Columns
     HIDDEN_LAYERS = atoi(argv[3]); // Propability of life cell
@@ -65,20 +64,22 @@ int main(int argc, char *argv[])
 
     hiddenlayerNeuronCount=(int *)malloc(HIDDEN_LAYERS*sizeof(int));
     printf("Do you want all hiddenlayers to have same numer of neurons?YES 1, NO 0\n");
-    int choice=0;
+    int choice;
 
     cin>>choice;
-
     if(choice==0){
       for(int i=0;i<HIDDEN_LAYERS;i++){
         printf("Enter number of neurons for %d hidden layer\n",(i+1));
-        int number_of_neurons=0;
-        cin >> hiddenlayerNeuronCount[i];
+        int number_of_neurons;
+        number_of_neurons=getchar();
+        hiddenlayerNeuronCount[i]=number_of_neurons;
+        printf("hidden layer neuron count = \n",hiddenlayerNeuronCount[i]);
       }
     }else{
         printf("Enter number of neurons every hidden layer will have\n");
-        int number_of_neurons=0   ;
+        int number_of_neurons;
         cin >> number_of_neurons;
+        cout<< "number_of_neurons="<< number_of_neurons<< endl;
         for(int i=0;i<HIDDEN_LAYERS;i++){
           hiddenlayerNeuronCount[i]=number_of_neurons;
         }
@@ -125,14 +126,24 @@ int main(int argc, char *argv[])
     };
 
     //XOR desired output values
-    float desiredout[PATTERN_COUNT][NETWORK_OUTPUT]=
+    /*float desiredout[PATTERN_COUNT][NETWORK_OUTPUT]=
     {
         {0},
         {1},
         {1},
         {0}
     };
+    */
+    float **desiredout;
+    desiredout=(float **)malloc(PATTERN_COUNT*(sizeof(float *)));
+    for(int i=0;i<PATTERN_COUNT;i++){
+      desiredout[i]=(float *)malloc(NETWORK_OUTPUT*(sizeof(float)));
+    }
 
+    desiredout[0][0]=0;
+    desiredout[1][0]=1;
+    desiredout[2][0]=1;
+    desiredout[3][0]=0;
 
     bpnet net;//Our neural network object
     int i,j;
