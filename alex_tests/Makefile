@@ -1,12 +1,16 @@
-GCC=g++ -w -std=gnu99 
-path_to_boost=/usr/local/boost_1_65_1
+GCC=g++ -w -std=gnu99
+OBJPATH=bin/obj
+ThreadPool_lib=threadpool
 VERSION=0.04
 
 all:
-	$(GCC) bpnet.cpp bpnet.h example.cpp -lm -I $(path_to_boost) -o backpropagation 
+	$(GCC) $(ThreadPool_lib)/CondVar.cpp -lpthread -c -o CondVar.o
+	$(GCC) $(ThreadPool_lib)/Mutex.cpp -lpthread -c -o Mutex.o
+	$(GCC) $(ThreadPool_lib)/Task.cpp -lpthread -c -o Task.o
+	$(GCC) $(ThreadPool_lib)/ThreadPool.cpp -lpthread -c -o ThreadPool.o
+	$(GCC) CondVar.o Mutex.o Task.o ThreadPool.o bpnet.cpp bpnet.h example.cpp  -lpthread -lm -o backpropagation
+
+	#$(GCC) CondVar.o Mutex.o Task.o ThreadPool.o  $(ThreadPool_lib)/threadpool_test.cpp -lpthread -o threadpool_test
 
 clean:
 	rm -f *~ *.o *.bin backpropagationcpp
-
-release:
-	tar -cvf backpropagationcpp-code-$(VERSION).tar *.c *.h *m *sh Makefile

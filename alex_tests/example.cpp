@@ -21,7 +21,35 @@
 using namespace std;
 #define PATTERN_COUNT 4
 #define PATTERN_SIZE 2
+#include "threadpool/ThreadPool.h"
 
+// ThreadPool and Mutex
+pthread_mutex_t mutexBusy;
+static int mutexsum;
+
+// not needed
+const int MAX_TASKS = 4;
+
+void train_wrapper(void* arg)
+{
+//toDelete/cout<<"locking mutex"<<endl;
+pthread_mutex_lock (&mutexBusy);
+mutexsum+=1;
+//toDelete/cout<<"num=" << mutexsum<<endl;
+pthread_mutex_unlock (&mutexBusy);
+//toDelete/cout<<"unlocked mutex"<<endl;
+  int* x = (int*) arg;
+  cout << "Hello " << *x << endl;
+//  cout << "\n";
+sleep(1);
+
+//toDelete/cout<<"locking mutex ending"<<endl;
+pthread_mutex_lock (&mutexBusy);
+mutexsum+=-1;
+//toDelete/cout<<"num=" << mutexsum<<endl;
+pthread_mutex_unlock (&mutexBusy);
+//toDelete/cout<<"unlocked mutex ending"<<endl;
+}
 
 
 
@@ -146,11 +174,11 @@ int main(int argc, char *argv[])
     desiredout[3][0]=0;
 
     bpnet *netMatrix=new bpnet[2];//Our neural network object
-    int i,j;
+
     float error;
-    //We create the network
+    //We create the network need work
 
-
+    cout << "Cloning the net not Completed l164"<< endl;
 
     netMatrix[0].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
     netMatrix[1].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
@@ -158,39 +186,84 @@ int main(int argc, char *argv[])
 
     //net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,HIDDEN_LAYERS,HIDDEN_LAYERS);
 
+    //Init Thread Pool
+    cout<< "Initialize thread pool to test only 2 threads l173"<< endl;
+    ThreadPool tp(2);
+    int ret = tp.initialize_threadpool();
+    if (ret == -1) {
+      cerr << "Failed to initialize thread pool!" << endl;
+      return 0;
+    }
+    // init mutex to join
+    pthread_mutex_init(&mutexBusy, NULL);
+    mutexsum=0;
     //Start the neural network training
+      // create batch s
+
     start = clock();
     cout << "Start training for " << EPOCHS << " " << endl;
     int counter=0;
 
-    for(i=0;i<EPOCHS;i++)
-    {
+    //for(int i=0;i<EPOCHS;i++)
+    for(int i=0;i<2;i++)
+    {cout<<"Going again to share work"<<endl;
         error=0;
-        for(j=0;j<PATTERN_COUNT;j++)
+        for(int j=0;j<PATTERN_COUNT;j++)
         {
 
-            netMatrix[0].batchTrain(desiredout[j],pattern[j]);
-            netMatrix[1].batchTrain(desiredout[j],pattern[j]);
-            //train from 2ond net
-            counter++;
-            if(counter==10/2){
-              //function to add errors
-              netMatrix[0].gatherErrors(netMatrix,2);
-              netMatrix[0].applyBatchCumulations(0.2f,0.1f);
-              netMatrix[1].clone_bpnet(&netMatrix[0]);
-              counter=0;
+          // create tasks batch number/ number of threads
+          for (int k= 0; k< thread_num-1; k++) {
+            int* x = new int();
+            *x = k+1;
+            Task* t = new Task(&train_wrapper, (void*) x);
+        //    cout << "Adding to pool, task " << i+1 << endl;
+            tp.add_task(t);
+        //    cout << "Added to pool, task " << i+1 << endl;
+          }
+
+          int flag=1;
+          int flag2=1;
+          while(flag)
+          {
+            //if( pthread_mutex_trylock(&mutexBusy)==0)
+            //flag2=pthread_mutex_trylock(&mutexBusy);
+            //cout<< "Printing flag2="<<flag2<<endl;
+            if(pthread_mutex_trylock(&mutexBusy)==0)
+            {
+                if(mutexsum==0){
+                  flag=0;
+                  cout << "done synch i="<<i<<endl;
+                }
+              pthread_mutex_unlock (&mutexBusy);
+
+            }
+            //sleep(1);
+            //cout<<"Testing again mutex"<<endl;
+          }
+
+          cout<<"Going again to share work"<<endl;
+            // netMatrix[0].batchTrain(desiredout[j],pattern[j]);
+            // netMatrix[1].batchTrain(desiredout[j],pattern[j]);
+            // //train from 2ond net
+            // counter++;
+            // if(counter==10/2){
+            //   //function to add errors
+            //   netMatrix[0].gatherErrors(netMatrix,2);
+            //   netMatrix[0].applyBatchCumulations(0.2f,0.1f);
+            //   netMatrix[1].clone_bpnet(&netMatrix[0]);
+            //   counter=0;
             }
 
         }
 
 
 
-    }
+
     duration = ( clock() - start ) / (double) CLOCKS_PER_SEC;
     cout << "Train net duration : " << duration << endl;
     //once trained test all patterns
 
-    for(i=0;i<PATTERN_COUNT;i++)
+    for(int i=0;i<PATTERN_COUNT;i++)
     {
 
         netMatrix[0].propagate(pattern[i]);
@@ -199,5 +272,11 @@ int main(int argc, char *argv[])
         cout << "TESTED PATTERN " << i << " DESIRED OUTPUT: " << *desiredout[i] << " NET RESULT: "<< netMatrix[0].getOutput().neurons[0]->output << endl;
     }
 
+
+
+
+
+
+    pthread_mutex_destroy(&mutexBusy);
     return 0;
 }
