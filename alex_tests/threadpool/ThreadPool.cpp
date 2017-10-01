@@ -52,7 +52,7 @@ int ThreadPool::destroy_threadpool()
 {
   // Note: this is not for synchronization, its for thread communication!
   // destroy_threadpool() will only be called from the main thread, yet
-  // the modified m_pool_state may not show up to other threads until its 
+  // the modified m_pool_state may not show up to other threads until its
   // modified in a lock!
   m_task_mutex.lock();
   m_pool_state = STOPPED;
@@ -77,9 +77,9 @@ void* ThreadPool::execute_thread()
   cout << "Starting thread " << pthread_self() << endl;
   while(true) {
     // Try to pick a task
-    cout << "Locking: " << pthread_self() << endl;
+    //cout << "Locking: " << pthread_self() << endl;
     m_task_mutex.lock();
-    
+
     // We need to put pthread_cond_wait in a loop for two reasons:
     // 1. There can be spurious wakeups (due to signal/ENITR)
     // 2. When mutex is released for waiting, another thread can be waken up
@@ -89,9 +89,9 @@ void* ThreadPool::execute_thread()
     while ((m_pool_state != STOPPED) && (m_tasks.empty())) {
       // Wait until there is a task in the queue
       // Unlock mutex while wait, then lock it back when signaled
-      cout << "Unlocking and waiting: " << pthread_self() << endl;
+      //cout << "Unlocking and waiting: " << pthread_self() << endl;
       m_task_cond_var.wait(m_task_mutex.get_mutex_ptr());
-      cout << "Signaled and locking: " << pthread_self() << endl;
+      //cout << "Signaled and locking: " << pthread_self() << endl;
     }
 
     // If the thread was woken up to notify process shutdown, return from here
@@ -103,7 +103,7 @@ void* ThreadPool::execute_thread()
 
     task = m_tasks.front();
     m_tasks.pop_front();
-    cout << "Unlocking: " << pthread_self() << endl;
+    //cout << "Unlocking: " << pthread_self() << endl;
     m_task_mutex.unlock();
 
     //cout << "Executing thread " << pthread_self() << endl;

@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
     // init mutex to join
     pthread_mutex_init(&mutexBusy, NULL);
     mutexsum=0;
-    mutextable =(int *)malloc(sizeof(int)*(NUM_THREADS)-1);
+    mutextable =(int *)malloc(sizeof(int)*((NUM_THREADS)-1));
 
     //Start the neural network training
     start_clock = clock();

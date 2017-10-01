@@ -77,7 +77,9 @@ public:
     float train(const float *desiredoutput,const float *input,float alpha, float momentum);
     void batchTrain(const float *desiredoutput,const float *input);
 
+    //functions to suplement batch Acumulation
     void gatherErrors(class bpnet *netMatrix,int netCount);
+    void gatherErrors2(class bpnet *netMatrix,int specificNet);
     void applyBatchCumulations(float alpha, float momentum);
 
     //Updates the next layer input values
@@ -93,7 +95,6 @@ public:
     //get methods
     int get_m_hiddenlayercount();
     float get_numberOfBatches();
-
 };
 
 #endif // BPNET_H

@@ -26,38 +26,70 @@ using namespace std;
 // ThreadPool and Mutex
 pthread_mutex_t mutexBusy;
 static int mutexsum;
+static int *mutextable;
+
+// Net matrix as global so we can access it with out data_wraper
+static bpnet *netMatrix;
+static float **pattern;
+static float **desiredout;
+static int main_start_batch;
+static int threads_start_batch;
+
+
+
+struct data_wraper{
+  int pattern_size,counter,nnet_id;
+
+  data_wraper(){}
+  ~data_wraper(){}
+
+};
 
 // not needed
 const int MAX_TASKS = 4;
 
 void train_wrapper(void* arg)
 {
-//toDelete/cout<<"locking mutex"<<endl;
-pthread_mutex_lock (&mutexBusy);
-mutexsum+=1;
-//toDelete/cout<<"num=" << mutexsum<<endl;
-pthread_mutex_unlock (&mutexBusy);
-//toDelete/cout<<"unlocked mutex"<<endl;
-  int* x = (int*) arg;
-  cout << "Hello " << *x << endl;
-//  cout << "\n";
-sleep(1);
 
-//toDelete/cout<<"locking mutex ending"<<endl;
-pthread_mutex_lock (&mutexBusy);
-mutexsum+=-1;
-//toDelete/cout<<"num=" << mutexsum<<endl;
-pthread_mutex_unlock (&mutexBusy);
-//toDelete/cout<<"unlocked mutex ending"<<endl;
+  data_wraper* data1 = (data_wraper*) arg;
+  int i;
+  if((data1->nnet_id)==0){
+    i=main_start_batch;
+  }else{
+    i=threads_start_batch;
+  }
+
+//TODELETE/cout<<"train2"<<"threadid="<<data1->nnet_id<<endl;
+  while(data1->counter >0){
+    netMatrix[data1->nnet_id].batchTrain(desiredout[i],pattern[i]);
+    i++;
+    if(i==data1->pattern_size)
+      i=0;
+    data1->counter--;
+  }
+//TODELETE/  cout<<"train3"<<"threadid="<<data1->nnet_id<<endl;
+//Transfering start
+if((data1->nnet_id)==0){
+main_start_batch=i;
 }
-
-
+//TODELETE/cout<<"train4"<<"threadid="<<data1->nnet_id<<endl;
+  pthread_mutex_lock (&mutexBusy);
+//TODELETE/cout<<"train4.1"<<"threadid="<<data1->nnet_id<<endl;
+  mutexsum+=-1;
+//TODELETE/cout<<"train4.2"<<"threadid="<<data1->nnet_id<<endl;
+  if(data1->nnet_id!=0){
+    mutextable[(data1->nnet_id)-1]=1;
+  }
+//TODELETE/cout<<"train4.3"<<"threadid="<<data1->nnet_id<<endl;
+  pthread_mutex_unlock (&mutexBusy);
+//TODELETE/cout<<"train5"<<"threadid="<<data1->nnet_id<<endl;
+}
 
 int main(int argc, char *argv[])
 {
   int NETWORK_INPUTNEURONS,NETWORK_OUTPUT,HIDDEN_LAYERS,EPOCHS,NUM_THREADS;
   int *hiddenlayerNeuronCount;
-
+int batch_size=30;
   if (argc < 6) { // Check if the command line arguments are correct
 
     NETWORK_INPUTNEURONS=3;
@@ -66,8 +98,8 @@ int main(int argc, char *argv[])
     hiddenlayerNeuronCount=(int *)malloc(HIDDEN_LAYERS*sizeof(int));
     hiddenlayerNeuronCount[0]=3;
     hiddenlayerNeuronCount[1]=3;
-    EPOCHS=1000000;
-    NUM_THREADS=4;
+    EPOCHS=69000;
+    NUM_THREADS=6;
     printf("Usage: %s NI NO HI EPOCHS THREADS\n\n", argv[0]);
 
     printf("Using default net configurations \n\n"
@@ -89,11 +121,9 @@ int main(int argc, char *argv[])
     HIDDEN_LAYERS = atoi(argv[3]); // Propability of life cell
     EPOCHS = atoi(argv[4]);     // Display output
     NUM_THREADS=atoi(argv[5]); //number of threads to use
-
     hiddenlayerNeuronCount=(int *)malloc(HIDDEN_LAYERS*sizeof(int));
     printf("Do you want all hiddenlayers to have same numer of neurons?YES 1, NO 0\n");
     int choice;
-
     cin>>choice;
     if(choice==0){
       for(int i=0;i<HIDDEN_LAYERS;i++){
@@ -114,8 +144,6 @@ int main(int argc, char *argv[])
 
 
     }
-
-
   }else{
     printf("Usage: %s NI NO HI EPOCHS THREADS\n"
 	   "where\n"
@@ -131,38 +159,28 @@ int main(int argc, char *argv[])
 
   }
 
-
-
-
-    clock_t start;
+    clock_t start_clock;
     double duration;
 
 
+    pattern=(float **)malloc(PATTERN_COUNT*(sizeof(float *)));
+    for(int i=0;i<PATTERN_COUNT;i++){
+      pattern[i]=(float *)malloc(PATTERN_SIZE*(sizeof(float)));
+    }
 
-    /* Your algorithm here */
+    pattern[0][0]=0;
+    pattern[0][1]=0;
+
+    pattern[1][0]=0;
+    pattern[1][1]=1;
+
+    pattern[2][0]=1;
+    pattern[2][1]=0;
+
+    pattern[3][0]=1;
+    pattern[3][1]=1;
 
 
-    //Create some patterns
-    //playing with xor
-    //XOR input values
-    float pattern[PATTERN_COUNT][PATTERN_SIZE]=
-    {
-        {0,0},
-        {0,1},
-        {1,0},
-        {1,1}
-    };
-
-    //XOR desired output values
-    /*float desiredout[PATTERN_COUNT][NETWORK_OUTPUT]=
-    {
-        {0},
-        {1},
-        {1},
-        {0}
-    };
-    */
-    float **desiredout;
     desiredout=(float **)malloc(PATTERN_COUNT*(sizeof(float *)));
     for(int i=0;i<PATTERN_COUNT;i++){
       desiredout[i]=(float *)malloc(NETWORK_OUTPUT*(sizeof(float)));
@@ -173,110 +191,144 @@ int main(int argc, char *argv[])
     desiredout[2][0]=1;
     desiredout[3][0]=0;
 
-    bpnet *netMatrix=new bpnet[2];//Our neural network object
 
-    float error;
-    //We create the network need work
 
-    cout << "Cloning the net not Completed l164"<< endl;
+  cout << "Ccreating nnet = number of workers:"<<NUM_THREADS <<"Batch size="<<batch_size<< endl;
+  //TODELET/bpnet *netMatrix=new bpnet[NUM_THREADS];//Our neural network object
+  netMatrix=new bpnet[NUM_THREADS];
+  cout << "Cloning the net maybe Completed l253"<< endl;
+  netMatrix[0].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
+  for(int i=1;i<NUM_THREADS;i++){
+  netMatrix[i].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
+  netMatrix[i].clone_bpnet(&netMatrix[0]);
+  }
 
-    netMatrix[0].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
-    netMatrix[1].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
-    netMatrix[1].clone_bpnet(&netMatrix[0]);
 
-    //net.create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,HIDDEN_LAYERS,HIDDEN_LAYERS);
+  int batch_per_thread=batch_size/NUM_THREADS;
+    if((batch_size%NUM_THREADS==0) && batch_size>NUM_THREADS){
+      cout << "Calculating batch_size="<<batch_size <<" / workers="<< NUM_THREADS <<" == "<<batch_per_thread<<endl;
+    }
+    else{
+      cout << "Calculating batch_size="<<batch_size <<" / workers="<< NUM_THREADS <<" == "<<batch_per_thread<<endl;
+      cout<<"EXITING"<<endl;
+      exit(1);
+    }
 
     //Init Thread Pool
-    cout<< "Initialize thread pool to test only 2 threads l173"<< endl;
-    ThreadPool tp(2);
+    ThreadPool tp(NUM_THREADS-1);
+    if(NUM_THREADS-1>0){
     int ret = tp.initialize_threadpool();
     if (ret == -1) {
       cerr << "Failed to initialize thread pool!" << endl;
       return 0;
+      }
     }
     // init mutex to join
     pthread_mutex_init(&mutexBusy, NULL);
     mutexsum=0;
+    mutextable =(int *)malloc(sizeof(int)*((NUM_THREADS)-1));
+
     //Start the neural network training
-      // create batch s
-
-    start = clock();
+    start_clock = clock();
     cout << "Start training for " << EPOCHS << " " << endl;
-    int counter=0;
+    data_wraper data2;
+    data2.nnet_id=0;
+    data2.counter=batch_per_thread;
+    data2.pattern_size=PATTERN_COUNT;
+    main_start_batch=0;
+    threads_start_batch=0;
+    //data2=(data_wraper *)malloc(sizeof(data_wraper)*NUM_THREADS);
 
-    //for(int i=0;i<EPOCHS;i++)
-    for(int i=0;i<2;i++)
-    {cout<<"Going again to share work"<<endl;
-        error=0;
-        for(int j=0;j<PATTERN_COUNT;j++)
+    // for(int i=0;i<NUM_THREADS;i++){
+    //   data2[i].start=(int *)malloc(sizeof(int));
+    // }
+
+
+    int flag=1;
+
+    for(int i=0;i<EPOCHS;i++)
+    {
+        pthread_mutex_lock (&mutexBusy);
+        // reinitiallizing for synch method
+        mutexsum=NUM_THREADS;
+        //reinitiallizing for variable to cover such cost with gatherErrors2
+        for(int j=0;j<NUM_THREADS-1;j++){
+          mutextable[j]=0;
+        }
+        pthread_mutex_unlock (&mutexBusy);
+
+        // Loop to send out work to thread pool
+        for(int j=1;j<NUM_THREADS;j++)
         {
-
-          // create tasks batch number/ number of threads
-          for (int k= 0; k< thread_num-1; k++) {
-            int* x = new int();
-            *x = k+1;
-            Task* t = new Task(&train_wrapper, (void*) x);
-        //    cout << "Adding to pool, task " << i+1 << endl;
+          // data2[j].nnet_id=j;
+          // data2[j].counter=batch_per_thread;
+          // data2[j].pattern_size=PATTERN_COUNT;
+          //TODELETE/cout<<"Inside epoch="<<i<<"thread="<<j<<endl;
+          data_wraper *data;
+          data=new data_wraper();
+          data->nnet_id=j;
+          data->counter=batch_per_thread;
+          data->pattern_size=PATTERN_COUNT;
+          // data2[j].pattern_size=PATTERN_COUNT;
+          //train_wrapper((void *) data);
+          if(j!=0){
+            //Task* t = new Task(&train_wrapper, (void*) &data2[j]);
+            Task* t = new Task(&train_wrapper, (void*) data);
             tp.add_task(t);
-        //    cout << "Added to pool, task " << i+1 << endl;
           }
-
-          int flag=1;
-          int flag2=1;
-          while(flag)
+          //TODELETE/cout<<"Inside2 epoch="<<i<<"thread="<<j<<endl;
+        }
+        //TODELETE/cout<<"Outside epoch="<<i<<endl;
+        data2.counter=batch_per_thread;
+        train_wrapper((void *) &data2);
+        //Synch method
+        flag=1;
+        while(flag)
+        {
+          if(pthread_mutex_trylock(&mutexBusy)==0)
           {
-            //if( pthread_mutex_trylock(&mutexBusy)==0)
-            //flag2=pthread_mutex_trylock(&mutexBusy);
-            //cout<< "Printing flag2="<<flag2<<endl;
-            if(pthread_mutex_trylock(&mutexBusy)==0)
-            {
-                if(mutexsum==0){
-                  flag=0;
-                  cout << "done synch i="<<i<<endl;
-                }
-              pthread_mutex_unlock (&mutexBusy);
+            if(mutexsum==0){
+              flag=0;
+              }
+            pthread_mutex_unlock (&mutexBusy);
+            for(int j=0;j<NUM_THREADS-1;j++){
+              if(mutextable[j]==1){
+                netMatrix[0].gatherErrors2(netMatrix,j+1);
+                mutextable[j]=2;
+              }
+            }
 
             }
-            //sleep(1);
-            //cout<<"Testing again mutex"<<endl;
           }
-
-          cout<<"Going again to share work"<<endl;
-            // netMatrix[0].batchTrain(desiredout[j],pattern[j]);
-            // netMatrix[1].batchTrain(desiredout[j],pattern[j]);
-            // //train from 2ond net
-            // counter++;
-            // if(counter==10/2){
-            //   //function to add errors
-            //   netMatrix[0].gatherErrors(netMatrix,2);
-            //   netMatrix[0].applyBatchCumulations(0.2f,0.1f);
-            //   netMatrix[1].clone_bpnet(&netMatrix[0]);
-            //   counter=0;
-            }
-
+      // // transfering new start to threads
+      threads_start_batch=main_start_batch;
+      // Finnishing gatherErrors2
+      for(int j=0;j<NUM_THREADS-1;j++){
+          if(mutextable[j]==1){
+            //TODELETE/cout<<"Never inside"<<endl;
+            netMatrix[0].gatherErrors2(netMatrix,j+1);
+            mutextable[j]=2;
+          }
         }
 
+         netMatrix[0].applyBatchCumulations(0.2f,0.1f);
+        for(int j=1;j<NUM_THREADS;j++){
+        netMatrix[j].clone_bpnet(&netMatrix[0]);
+        }
+        //TODELETE/cout<<"Finishing epoch="<<i<<endl;
+    }
 
 
-
-    duration = ( clock() - start ) / (double) CLOCKS_PER_SEC;
+    duration = ( clock() - start_clock ) / (double) CLOCKS_PER_SEC;
     cout << "Train net duration : " << duration << endl;
     //once trained test all patterns
-
     for(int i=0;i<PATTERN_COUNT;i++)
     {
-
         netMatrix[0].propagate(pattern[i]);
-
     //display result
         cout << "TESTED PATTERN " << i << " DESIRED OUTPUT: " << *desiredout[i] << " NET RESULT: "<< netMatrix[0].getOutput().neurons[0]->output << endl;
     }
 
-
-
-
-
-
-    pthread_mutex_destroy(&mutexBusy);
+    tp.destroy_threadpool();
     return 0;
 }

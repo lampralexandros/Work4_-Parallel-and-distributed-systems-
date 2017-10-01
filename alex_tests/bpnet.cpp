@@ -77,10 +77,10 @@ void neuron::clone_neuron(int inputsize, struct neuron *main_neuron){
   this->output=main_neuron->output;
   this->gain=main_neuron->gain;
   this->wgain=main_neuron->wgain;
-  this->weights=new float[inputsize];
+  //this->weights=new float[inputsize];
   this->errorGain=main_neuron->errorGain;
   this->errorWeight=main_neuron->errorWeight;
-  this->deltavalues=new float[inputsize];
+  //this->deltavalues=new float[inputsize];
   for(int i=0;i<inputsize;i++){
     this->weights[i]=main_neuron->weights[i];
     this->deltavalues[i]=main_neuron->deltavalues[i];
@@ -157,10 +157,10 @@ void layer::clone_layer(struct layer *main_layer){
 
   this->inputcount=main_layer->inputcount;
   this->neuroncount=main_layer->neuroncount;
-  this->layerinput=new float[this->inputcount];
-  this->neurons=new neuron*[this->neuroncount];
+  //this->layerinput=new float[this->inputcount];
+  //this->neurons=new neuron*[this->neuroncount];
   for(int i=0;i<this->neuroncount;i++){
-  this->neurons[i]=new neuron;
+  //this->neurons[i]=new neuron;
   this->neurons[i]->clone_neuron(this->inputcount, main_layer->neurons[i]);
   }
 }
@@ -223,6 +223,7 @@ void bpnet::create(int inputcount, int inputneurons, int outputcount, int *hidde
             {
                 m_outputlayer.create(inputneurons,outputcount);
             }
+            numberOfBatches=0;
 }
 
 
@@ -425,29 +426,34 @@ void bpnet::batchTrain(const float *desiredoutput, const float *input)
 
 
 }
-
+// A function to gather all errors from all nets
 void bpnet::gatherErrors(class bpnet *netMatrix,int netCount)
 {
-  int i,j,k;
-
   //calculate the error value for the output layer
-  for(i=0;i<netCount;i++){
-
+  for(int i=1;i<netCount;i++){
       this->m_outputlayer.getLayer(&netMatrix[i].m_outputlayer);
-      for(j=0;j<m_hiddenlayercount;j++){
+      for(int j=0;j<m_hiddenlayercount;j++){
         this->m_hiddenlayers[j]->getLayer(netMatrix[i].m_hiddenlayers[j]);
 
       }
-    
       this->m_inputlayer.getLayer(&netMatrix[i].m_inputlayer);
-
       this->numberOfBatches+=netMatrix[i].get_numberOfBatches(); //keep track of how many batches passed
 
   }
 
 
 }
+// A function to gather all errors from a specific nets
+void bpnet::gatherErrors2(class bpnet *netMatrix,int specificNet){
+  this->m_outputlayer.getLayer(&netMatrix[specificNet].m_outputlayer);
+  for(int j=0;j<m_hiddenlayercount;j++){
+    this->m_hiddenlayers[j]->getLayer(netMatrix[specificNet].m_hiddenlayers[j]);
 
+  }
+  this->m_inputlayer.getLayer(&netMatrix[specificNet].m_inputlayer);
+  this->numberOfBatches+=netMatrix[specificNet].get_numberOfBatches(); //keep track of how many batches passed
+
+}
 
 
 
@@ -601,10 +607,10 @@ void bpnet::clone_bpnet(class bpnet *main_bpnet)
   this->m_hiddenlayercount=main_bpnet->get_m_hiddenlayercount();
   this->m_inputlayer.clone_layer(&main_bpnet->m_inputlayer);
   this->numberOfBatches=main_bpnet->get_numberOfBatches();
-  this->m_hiddenlayers=new layer*[this->m_hiddenlayercount];
+  //this->m_hiddenlayers=new layer*[this->m_hiddenlayercount];
 
   for(int i=0;i<this->m_hiddenlayercount;i++){
-    this->m_hiddenlayers[i]=new layer;
+    //this->m_hiddenlayers[i]=new layer;
         this->m_hiddenlayers[i]->clone_layer(main_bpnet->m_hiddenlayers[i]);
   }
 
