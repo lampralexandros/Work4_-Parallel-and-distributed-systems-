@@ -21,6 +21,8 @@
 #include <cstdio>
 #include <stdio.h>
 #include <string.h>
+#include <cuda.h>
+#include <pthread.h>
 /*****************************neuron routines*******************************/
 
 neuron::neuron():weights(0),deltavalues(0),output(0),gain(0),wgain(0) //constructor
@@ -352,7 +354,7 @@ void bpnet::batchTrain(const float *desiredoutput, const float *input)
     //function train, teaches the network to recognize a pattern given a desired output
     float errorc; //local error;
     float sum=0,csum=0;
-    float delta,udelta;
+    //float delta,udelta;
     float output;
     //first we begin by propagating the input
     propagate(input);
@@ -452,6 +454,409 @@ void bpnet::gatherErrors2(class bpnet *netMatrix,int specificNet){
   }
   this->m_inputlayer.getLayer(&netMatrix[specificNet].m_inputlayer);
   this->numberOfBatches+=netMatrix[specificNet].get_numberOfBatches(); //keep track of how many batches passed
+
+}
+
+
+
+
+__global__ void cuda_layer_comulations2(float alpha,float momentum,int numberOfBatches,float *weights,float *errorWeight,float *deltavalues)
+{
+  //int index=threadIdx.x*blockDim.y+threadIdx.y; //blockDim.y=max_neurons*max_inputs
+  int index=blockDim.y*(blockIdx.y +gridDim.y*(threadIdx.x+blockIdx.x*blockDim.x))+threadIdx.y;
+
+
+
+  float udelta=alpha *(errorWeight[index] /numberOfBatches) + deltavalues[index] * momentum;
+
+  weights[index]+=udelta;
+  deltavalues[index]=udelta;
+
+  // if(index==0){
+  //   weights[index]=blockDim.x;
+  // }
+  //
+  // if(index==1){
+  //   weights[index]=blockDim.y;
+  // }
+
+
+}
+
+
+
+
+__global__ void cuda_layer_comulations(float alpha,int numberOfBatches,float *wgain,float *errorGain)
+{
+  //int index=threadIdx.x*blockDim.y+threadIdx.y; //blockDim.y=max_neurons, blockDim.x=number_of_layers
+  int index=blockDim.y*(blockIdx.y +gridDim.y*(threadIdx.x+blockIdx.x*blockDim.x))+threadIdx.y;
+  wgain[index]-=alpha*errorGain[index]/numberOfBatches;
+  // if(index==0){
+  //   wgain[index]=blockDim.y;
+  // }
+
+
+}
+
+__global__ void cuda_TEST(float *wgain)
+{
+  //int index=threadIdx.x*blockDim.y+threadIdx.y; //blockDim.y=max_neurons, blockDim.x=number_of_layers
+  int index=blockDim.y*(blockIdx.y +gridDim.y*(threadIdx.x+blockIdx.x*blockDim.x))+threadIdx.y;
+  wgain[index]=index;
+  // if(index==0){
+  //   wgain[index]=blockDim.y;
+  // }
+
+
+}
+
+int bpnet::max_neuroncount(){
+  int max=m_outputlayer.neuroncount;
+  for(int i=0;i<m_hiddenlayercount;i++){
+    if(max<m_hiddenlayers[i]->neuroncount) max=m_hiddenlayers[i]->neuroncount;
+  }
+  if(max<m_inputlayer.neuroncount) max=m_inputlayer.neuroncount;
+  return max;
+}
+
+int bpnet::max_inputcount(){
+  int max=m_outputlayer.inputcount;
+  for(int i=0;i<m_hiddenlayercount;i++){
+    if(max<m_hiddenlayers[i]->inputcount) max=m_hiddenlayers[i]->inputcount;
+  }
+  if(max<m_inputlayer.inputcount) max=m_inputlayer.inputcount;
+  return max;
+}
+
+void gridDimensions(int max_neurons,int number_of_layers,int *blocknum_x,int *blocknum_y,int *threadnum_x,int *threadnum_y){
+  //blockDim.y
+  if(max_neurons<32){
+    *threadnum_y=max_neurons;
+    *blocknum_y=1;
+  }else{
+    *blocknum_y=1;
+    *threadnum_y=1;
+    while((*blocknum_y)*(*threadnum_y)<max_neurons){
+      *threadnum_y=32;
+      while((*threadnum_y)>1){
+        (*threadnum_y)--;
+        if((*blocknum_y)*(*threadnum_y)==max_neurons){
+          break;
+        }
+      }
+
+      if((*blocknum_y)*(*threadnum_y)==max_neurons){
+        break;
+      }
+      (*blocknum_y)++;
+
+    }
+  }
+
+
+  //blockdim.x
+
+  int max_xthread=floor(1024/(*threadnum_y));
+  if(number_of_layers<max_xthread){
+    (*blocknum_x)=1;
+    (*threadnum_x)=number_of_layers;
+  }else{
+    (*blocknum_x)=1;
+    (*threadnum_x)=max_xthread;
+
+    while((*blocknum_x)*(*threadnum_x)<number_of_layers){
+      (*threadnum_x)=max_xthread;
+      while((*threadnum_x)>1){
+        (*threadnum_x)--;
+        if((*blocknum_x)*(*threadnum_x)==number_of_layers){
+          break;
+        }
+      }
+
+      if((*blocknum_x)*(*threadnum_x)==number_of_layers){
+        break;
+      }
+      (*blocknum_x)++;
+
+    }
+  }
+
+
+
+
+}
+
+
+void bpnet::KernelapplyBatchCumulations(float alpha, float momentum,int max_neurons,int max_inputs)
+{
+    int i,j,k;
+
+
+    //   clock_t start;
+    //  double duration=0;
+
+    int number_of_layers=m_hiddenlayercount+2;
+
+    float *deltavalues_C;
+    float *weights_C;
+    float *wgain_C;
+    float *errorWeight_C;
+    float *errorGain_C;
+
+    cudaMalloc((void **)&deltavalues_C,(number_of_layers)*(max_neurons)*(max_inputs)*sizeof(float));
+    cudaMalloc((void **)&weights_C,(number_of_layers)*(max_neurons)*(max_inputs)*sizeof(float));
+    cudaMalloc((void **)&errorWeight_C,(number_of_layers)*(max_neurons)*(max_inputs)*sizeof(float));
+
+    cudaMalloc((void **)&wgain_C,(number_of_layers)*(max_neurons)*sizeof(float));
+    cudaMalloc((void **)&errorGain_C,(number_of_layers)*(max_neurons)*sizeof(float));
+
+    float *deltavalues_D;
+    deltavalues_D=(float *)malloc(number_of_layers*(max_neurons)*(max_inputs)*sizeof(float));
+
+    float *weights_D;
+    weights_D=(float *)malloc((number_of_layers)*(max_neurons)*(max_inputs)*sizeof(float ));
+
+    float *errorWeight_D;
+    errorWeight_D=(float *)malloc(number_of_layers*(max_neurons)*(max_inputs)*sizeof(float ));
+
+    float *wgain_D;
+    wgain_D=(float *)malloc(number_of_layers*max_neurons*(sizeof(float )));
+
+    float *errorGain_D;
+    errorGain_D=(float *)malloc(number_of_layers*max_neurons*(sizeof(float )));
+
+
+
+    layer *current_layer;
+    int layercounter=1;
+    for(k=0;k<number_of_layers;k++){
+
+        if(k==0){
+          current_layer=&m_outputlayer;
+        }else if(k==number_of_layers-1){
+          current_layer=&m_inputlayer;
+        }else{
+          current_layer=m_hiddenlayers[m_hiddenlayercount-layercounter];
+          layercounter++;
+        }
+
+
+        for(i=0;i<max_neurons;i++)
+        {
+
+            if(i<current_layer->neuroncount){
+              wgain_D[k*max_neurons+i]=current_layer->neurons[i]->wgain;
+              errorGain_D[k*max_neurons+i]=current_layer->neurons[i]->errorGain;
+            }else{
+              wgain_D[k*max_neurons+i]=0;
+              errorGain_D[k*max_neurons+i]=0;
+            }
+
+            //now we proceed to update the weights of the neuron
+            for(j=0;j<max_inputs;j++)
+            {
+              if(j<current_layer->inputcount && i<current_layer->neuroncount ){
+                errorWeight_D[(k*max_neurons+i)*max_inputs+j]=current_layer->neurons[i]->errorWeight;
+                deltavalues_D[(k*max_neurons+i)*max_inputs+j]=current_layer->neurons[i]->deltavalues[j];
+                weights_D[(k*max_neurons+i)*max_inputs+j]=current_layer->neurons[i]->weights[j];
+              }else{
+                errorWeight_D[(k*max_neurons+i)*max_inputs+j]=0;
+                deltavalues_D[(k*max_neurons+i)*max_inputs+j]=0;
+                weights_D[(k*max_neurons+i)*max_inputs+j]=0;
+              }
+
+            }
+
+
+        }
+    }
+
+    int threadnum_x,threadnum_y,blocknum_x,blocknum_y;
+
+
+    if(number_of_layers*max_neurons<1024){// (number_of_layers<32&&max_neurons<32)
+      //den exei testaristei arketa
+      // gridDimensions( 242, 50,&blocknum_x,&blocknum_y,&threadnum_x,&threadnum_y);
+      // printf("threadnum_x=%d threadnum_y=%d blocknum_x=%d blocknum_y=%d\n",threadnum_x,threadnum_y,blocknum_x,blocknum_y);
+      threadnum_x=number_of_layers;
+      threadnum_y=max_neurons;
+      blocknum_x=1;
+      blocknum_y=1;
+    }else{
+      //den exei testaristei arketa
+      gridDimensions( max_neurons, number_of_layers,&blocknum_x,&blocknum_y,&threadnum_x,&threadnum_y);
+
+    }
+
+    dim3 threadsPerBlock(threadnum_x,threadnum_y);
+    dim3 numblocks(blocknum_x,blocknum_y);
+
+
+    cudaMemcpy(wgain_C, wgain_D, (number_of_layers)*(max_neurons)*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(errorGain_C, errorGain_D, (number_of_layers)*(max_neurons)*sizeof(float), cudaMemcpyHostToDevice);
+    cuda_layer_comulations<<<numblocks,threadsPerBlock>>>(alpha, numberOfBatches, wgain_C,errorGain_C);
+
+
+
+    cudaError_t error = cudaGetLastError();
+    if(error != cudaSuccess)
+    {
+      // print the CUDA error message and exit
+      printf("CUDA error: %s\n", cudaGetErrorString(error));
+      exit(-1);
+    }
+
+    cudaDeviceSynchronize();
+    cudaMemcpy(wgain_D, wgain_C, (number_of_layers)*(max_neurons)*sizeof(float), cudaMemcpyDeviceToHost);
+
+    if(number_of_layers*max_neurons*max_inputs<1024){//// //(number_of_layers<32 && max_neurons*max_inputs<32)
+      //den exei testaristei arketa
+      // gridDimensions( 242, 50,&blocknum_x,&blocknum_y,&threadnum_x,&threadnum_y);
+      // printf("threadnum_x=%d threadnum_y=%d blocknum_x=%d blocknum_y=%d\n",threadnum_x,threadnum_y,blocknum_x,blocknum_y);
+      threadnum_x=number_of_layers;
+      threadnum_y=max_neurons*max_inputs;
+      blocknum_x=1;
+      blocknum_y=1;
+    }else{
+      //den exei testaristei arketa
+      gridDimensions( max_neurons*max_inputs, number_of_layers,&blocknum_x,&blocknum_y,&threadnum_x,&threadnum_y);
+
+    }
+
+
+    dim3 threadsPerBlock2(threadnum_x,threadnum_y);
+    dim3 numblocks2(blocknum_x,blocknum_y);
+
+    cudaMemcpy(weights_C, weights_D, (number_of_layers)*(max_neurons)*(max_inputs)*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(errorWeight_C, errorWeight_D, (number_of_layers)*(max_neurons)*(max_inputs)*sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(deltavalues_C, deltavalues_D, (number_of_layers)*(max_neurons)*(max_inputs)*sizeof(float), cudaMemcpyHostToDevice);
+    cuda_layer_comulations2<<<numblocks2,threadsPerBlock2>>>( alpha, momentum, numberOfBatches, weights_C, errorWeight_C, deltavalues_C);
+
+    error = cudaGetLastError();
+    if(error != cudaSuccess)
+    {
+      // print the CUDA error message and exit
+      printf("CUDA error: %s\n", cudaGetErrorString(error));
+      exit(-1);
+    }
+
+    cudaDeviceSynchronize();
+    cudaMemcpy(weights_D, weights_C, (number_of_layers)*(max_neurons)*(max_inputs)*sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(deltavalues_D, deltavalues_C, (number_of_layers)*(max_neurons)*(max_inputs)*sizeof(float), cudaMemcpyDeviceToHost);
+
+    layercounter=1;
+    for(k=0;k<number_of_layers;k++){
+
+
+
+        if(k==0){
+          current_layer=&m_outputlayer;
+        }else if(k==number_of_layers-1){
+          current_layer=&m_inputlayer;
+        }else{
+
+          current_layer=m_hiddenlayers[m_hiddenlayercount-layercounter];
+          layercounter++;
+        }
+
+
+        for(i=0;i<max_neurons;i++)
+        {
+
+            if(i<current_layer->neuroncount){
+              current_layer->neurons[i]->wgain=wgain_D[k*max_neurons+i];
+              current_layer->neurons[i]->errorWeight=0;
+              current_layer->neurons[i]->errorGain=0;
+            }
+
+            //now we proceed to update the weights of the neuron
+            for(j=0;j<max_inputs;j++)
+            {
+              if(j<current_layer->inputcount && i<current_layer->neuroncount ){
+                current_layer->neurons[i]->deltavalues[j]=deltavalues_D[(k*max_neurons+i)*max_inputs+j];
+                current_layer->neurons[i]->weights[j]=weights_D[(k*max_neurons+i)*max_inputs+j];
+              }
+
+            }
+        }
+    }
+
+
+
+
+
+
+    // //testing
+    // int testsize_x,testsize_y;
+    // testsize_x=271;
+    // testsize_y=1;
+    // if((testsize_x<32)&&(testsize_y<32)){
+    //   //den exei testaristei arketa
+    //   // gridDimensions( 242, 50,&blocknum_x,&blocknum_y,&threadnum_x,&threadnum_y);
+    //   // printf("threadnum_x=%d threadnum_y=%d blocknum_x=%d blocknum_y=%d\n",threadnum_x,threadnum_y,blocknum_x,blocknum_y);
+    //   threadnum_x=testsize_x;
+    //   threadnum_y=testsize_y;
+    //   blocknum_x=1;
+    //   blocknum_y=1;
+    // }else{
+    //   //den exei testaristei arketa
+    //   gridDimensions( testsize_y, testsize_x,&blocknum_x,&blocknum_y,&threadnum_x,&threadnum_y);
+    //
+    //
+    // }
+    // float *test_C;
+    // cudaMalloc((void **)&test_C,(testsize_x)*(testsize_y)*sizeof(float));
+    // float *test_D;
+    // test_D=(float *)malloc(testsize_x*testsize_y*(sizeof(float )));
+    //
+    // for(k=0;k<testsize_x;k++){
+    //   for(i=0;i<threadnum_y;i++){
+    //     test_D[k*threadnum_y+i]=100.0;
+    //   }
+    // }
+    //
+    // dim3 threadsPerBlock3(threadnum_x,threadnum_y);
+    // dim3 numblocks3(blocknum_x,blocknum_y);
+    //
+    //
+    // cudaMemcpy(test_C, test_D, (testsize_x)*(testsize_y)*sizeof(float), cudaMemcpyHostToDevice);
+    // cuda_TEST<<<numblocks3,threadsPerBlock3>>>(test_C);
+    //
+    //
+    //
+    // error = cudaGetLastError();
+    // if(error != cudaSuccess)
+    // {
+    //   // print the CUDA error message and exit
+    //   printf("CUDA error: %s\n", cudaGetErrorString(error));
+    //   exit(-1);
+    // }
+    //
+    // cudaDeviceSynchronize();
+    // cudaMemcpy(test_D, test_C, (testsize_x)*(testsize_y)*sizeof(float), cudaMemcpyDeviceToHost);
+    // // printf("\n\n");
+    // // for(k=0;k<testsize_x;k++){
+    // //   for(i=0;i<testsize_y;i++){
+    // //     printf("test[%d]=%f\n",k*testsize_y+i,test_D[k*testsize_y+i] );
+    // //   }
+    // // }
+    //
+    //     cudaFree( test_C);
+
+
+
+
+    cudaFree( deltavalues_C );
+    cudaFree( weights_C );
+    cudaFree( wgain_C );
+    cudaFree( errorWeight_C );
+    cudaFree( errorGain_C );
+
+
+    numberOfBatches=0;
+
+
+
 
 }
 

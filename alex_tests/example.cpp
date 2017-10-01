@@ -18,6 +18,8 @@
 #include <stdlib.h>
 #include <ctime>
 #include "bpnet.h"
+#include <pthread.h>
+
 using namespace std;
 #define PATTERN_COUNT 4
 #define PATTERN_SIZE 2
@@ -168,28 +170,38 @@ int batch_size=30;
       pattern[i]=(float *)malloc(PATTERN_SIZE*(sizeof(float)));
     }
 
-    pattern[0][0]=0;
-    pattern[0][1]=0;
+    // pattern[0][0]=0;
+    // pattern[0][1]=0;
+    //
+    // pattern[1][0]=0;
+    // pattern[1][1]=1;
+    //
+    // pattern[2][0]=1;
+    // pattern[2][1]=0;
+    //
+    // pattern[3][0]=1;
+    // pattern[3][1]=1;
 
-    pattern[1][0]=0;
-    pattern[1][1]=1;
-
-    pattern[2][0]=1;
-    pattern[2][1]=0;
-
-    pattern[3][0]=1;
-    pattern[3][1]=1;
+//TODELETE/    cout<<"Input pattern"<<endl;
+    for(int i=0;i<(1<<PATTERN_SIZE);i++){
+      for(int j=0;j<PATTERN_SIZE;j++){
+           pattern[i][j]=i/(1<<(j))%2;
+//TODELETE/cout <<" "<<pattern[i][j]<<" ";
+      }
+      cout<<endl;
+    }
 
 
     desiredout=(float **)malloc(PATTERN_COUNT*(sizeof(float *)));
-    for(int i=0;i<PATTERN_COUNT;i++){
-      desiredout[i]=(float *)malloc(NETWORK_OUTPUT*(sizeof(float)));
-    }
+      for(int i=0;i<PATTERN_COUNT;i++){
+        desiredout[i]=(float *)malloc(NETWORK_OUTPUT*(sizeof(float)));
+      }
 
-    desiredout[0][0]=0;
-    desiredout[1][0]=1;
-    desiredout[2][0]=1;
-    desiredout[3][0]=0;
+    //
+    // desiredout[0][0]=0;
+    // desiredout[1][0]=1;
+    // desiredout[2][0]=1;
+    // desiredout[3][0]=0;
 
 
 
@@ -202,6 +214,37 @@ int batch_size=30;
   netMatrix[i].create(PATTERN_SIZE,NETWORK_INPUTNEURONS,NETWORK_OUTPUT,hiddenlayerNeuronCount,HIDDEN_LAYERS);
   netMatrix[i].clone_bpnet(&netMatrix[0]);
   }
+
+  //CHECKING FOR CUDA ERRORS
+  int max_neurons=netMatrix[0].max_neuroncount();
+  int max_inputs=netMatrix[0].max_inputcount();
+  int number_of_layers=2+HIDDEN_LAYERS;
+  int exitflag=1;
+  for(int i=32;i>1;i--){
+    if(((max_neurons*number_of_layers)%i)==0){
+      exitflag=0;
+      break;
+    }
+  }
+  if(exitflag==0){
+    for(int i=32;i>1;i--){
+      if(((max_neurons*max_neurons*number_of_layers)%i)==0){
+        exitflag=2;
+        break;
+      }
+    }
+  }
+  if(exitflag==0){
+    exitflag=1;
+  }
+
+  if(exitflag==1){
+    printf("ERROR:\nCan't find proper grid for Cuda\nmodulo[max_neurons*number_of_layers,32:-1:2] must be 0 at least once\nExiting programm\n");
+    exit(1);
+  }
+
+
+
 
 
   int batch_per_thread=batch_size/NUM_THREADS;
@@ -311,7 +354,8 @@ int batch_size=30;
           }
         }
 
-         netMatrix[0].applyBatchCumulations(0.2f,0.1f);
+        //netMatrix[0].applyBatchCumulations(0.2f,0.1f);
+        netMatrix[0].KernelapplyBatchCumulations(0.2f,0.1f,max_neurons,max_inputs);
         for(int j=1;j<NUM_THREADS;j++){
         netMatrix[j].clone_bpnet(&netMatrix[0]);
         }

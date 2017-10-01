@@ -62,7 +62,7 @@ private:
     layer m_outputlayer;//output layer..contains the result of applying the network
     layer **m_hiddenlayers;//Additional hidden layers
     int m_hiddenlayercount;//the count of additional hidden layers
-    float numberOfBatches;
+    int numberOfBatches;
 
 public:
 //function tu create in memory the network structure
@@ -81,7 +81,7 @@ public:
     void gatherErrors(class bpnet *netMatrix,int netCount);
     void gatherErrors2(class bpnet *netMatrix,int specificNet);
     void applyBatchCumulations(float alpha, float momentum);
-
+    void KernelapplyBatchCumulations(float alpha, float momentum,int max_inputs,int max_neurons);
     //Updates the next layer input values
     void update(int layerindex);
 
@@ -95,6 +95,8 @@ public:
     //get methods
     int get_m_hiddenlayercount();
     float get_numberOfBatches();
+    int max_inputcount();
+    int max_neuroncount();
 };
 
 #endif // BPNET_H

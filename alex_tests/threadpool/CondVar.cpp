@@ -1,4 +1,5 @@
 #include "CondVar.h"
+#include <pthread.h>
 
 CondVar::CondVar() {
   pthread_cond_init(&m_cond_var, NULL);

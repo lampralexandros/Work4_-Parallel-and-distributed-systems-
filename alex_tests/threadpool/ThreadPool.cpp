@@ -1,4 +1,5 @@
 #include "ThreadPool.h"
+#include <pthread.h>
 
 ThreadPool::ThreadPool() : m_pool_size(DEFAULT_POOL_SIZE)
 {
