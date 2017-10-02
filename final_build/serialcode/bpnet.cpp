@@ -4,11 +4,6 @@
   Version: 0.1
   Copyright(C) NeuroAI (http://www.learnartificialneuralnetworks.com)
   Documentation:http://www.learnartificialneuralnetworks.com/neural-network-software/backpropagation-source-code/
-  NeuroAI Licence:
-  Permision granted to use this source code only for non commercial and educational purposes.
-  You can distribute this file but you can't take ownership of it or modify it.
-  You can include this file as a link on any website but you must link directly to NeuroAI website
-  (http://www.learnartificialneuralnetworks.com)
   Written by Daniel Rios <daniel.rios@learnartificialneuralnetworks.com> , June 2013
 
  /*********************************************************************************************************/

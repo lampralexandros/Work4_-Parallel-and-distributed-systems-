@@ -4,11 +4,6 @@
   Version: 0.1
   Copyright(C) NeuroAI (http://www.learnartificialneuralnetworks.com)
   Documentation: http://www.learnartificialneuralnetworks.com/neural-network-software/backpropagation-source-code/
-  NeuroAI Licence:
-  Permision granted to use this source code only for non commercial and educational purposes.
-  You can distribute this file but you can't take ownership of it or modify it.
-  You can include this file as a link on any website but you must link directly to NeuroAI website
-  (http://www.learnartificialneuralnetworks.com)
   Written by Daniel Rios <daniel.rios@learnartificialneuralnetworks.com> , June 2013
 
  /*********************************************************************************************************/
@@ -394,7 +389,7 @@ int main(int argc, char *argv[])
     {
         netMatrix[0].propagate(pattern[i]);
     //display result
-        //cout << "TESTED PATTERN " << i << " DESIRED OUTPUT: " << *desiredout[i] << " NET RESULT: "<< netMatrix[0].getOutput().neurons[0]->output << endl;
+        cout << "TESTED PATTERN " << i << " DESIRED OUTPUT: " << *desiredout[i] << " NET RESULT: "<< netMatrix[0].getOutput().neurons[0]->output << endl;
         square_error+=(*desiredout[i]-netMatrix[0].getOutput().neurons[0]->output)*(*desiredout[i]-netMatrix[0].getOutput().neurons[0]->output);
     }
     square_error/=PATTERN_COUNT;

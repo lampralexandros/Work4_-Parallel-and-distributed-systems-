@@ -4,11 +4,6 @@
   Version: 0.1
   Copyright(C) NeuroAI (http://www.learnartificialneuralnetworks.com)
   Documentation:http://www.learnartificialneuralnetworks.com/neural-network-software/backpropagation-source-code/
-  NeuroAI Licence:
-  Permision granted to use this source code only for non commercial and educational purposes.
-  You can distribute this file but you can't take ownership of it or modify it.
-  You can include this file as a link on any website but you must link directly to NeuroAI website
-  (http://www.learnartificialneuralnetworks.com)
   Written by Daniel Rios <daniel.rios@learnartificialneuralnetworks.com> , June 2013
 
  /*********************************************************************************************************/
@@ -490,7 +485,7 @@ __global__ void cuda_layer_comulations(float alpha,int numberOfBatches,float *wg
 {
   //int index=threadIdx.x*blockDim.y+threadIdx.y; //blockDim.y=max_neurons, blockDim.x=number_of_layers
   int index=blockDim.y*(blockIdx.y +gridDim.y*(threadIdx.x+blockIdx.x*blockDim.x))+threadIdx.y;
-  wgain[index]+=alpha*errorGain[index]/numberOfBatches;
+  wgain[index]-=alpha*errorGain[index]/numberOfBatches;
   // if(index==0){
   //   wgain[index]=blockDim.y;
   // }
