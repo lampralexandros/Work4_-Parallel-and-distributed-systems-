@@ -1,0 +1,4 @@
+Duration  Inputsize NumNeuros NumThreads=4
+0.110701  3 8
+0.148632  4 9
+0.247296  5 10
