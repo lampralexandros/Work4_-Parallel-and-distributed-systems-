@@ -108,6 +108,7 @@ int main(int argc, char *argv[])
 
   NETWORK_INPUTNEURONS=PATTERN_SIZE;
   PATTERN_COUNT=1<<PATTERN_SIZE;
+  cout<<"Number of patterns produced with "<<PATTERN_SIZE<<" is "<<PATTERN_COUNT<<endl;
 
 
 
@@ -169,8 +170,8 @@ int main(int argc, char *argv[])
             net.batchTrain(desiredout[j],pattern[j]);
 
         }
-        randomPattern = rand()%(PATTERN_COUNT-0) + 0;
-        net.batchTrain(desiredout[randomPattern],pattern[randomPattern]);
+        // randomPattern = rand()%(PATTERN_COUNT-0) + 0;
+        // net.batchTrain(desiredout[randomPattern],pattern[randomPattern]);
 
           net.applyBatchCumulations(0.2f,0.1f);
           if(i%10000==0){

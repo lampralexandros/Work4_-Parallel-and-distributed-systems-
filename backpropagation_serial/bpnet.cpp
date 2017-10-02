@@ -52,15 +52,15 @@ void neuron::create(int inputcount)
     for(int i=0;i<inputcount;i++)
     {
         //get a random number between -0.5 and 0.5
-        random=(float(rand()) / float(RAND_MAX))/2.f; //min 0.5
+        random=(float(rand()) / float(RAND_MAX))/1.f; //min 0.5
         random*=sign;
         sign*=-1;
         weights[i]=random;
         deltavalues[i]=0;
     }
-    gain=1;
+    gain=-1;
 
-    random=(float(rand()) / float(RAND_MAX))/2.f; //min 0.5
+    random=(float(rand()) / float(RAND_MAX))/1.f; //min 0.5
     random*=sign;
     sign*=-1;
     wgain=random;
